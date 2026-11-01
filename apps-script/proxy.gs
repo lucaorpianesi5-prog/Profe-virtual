@@ -7,7 +7,7 @@
  */
 
 // ID de cliente OAuth de Google Cloud (el mismo que va en index.html). No es secreto.
-const CLIENT_ID = '290132927246-93jukcuetk56v3eva7e4upjlbck096sf.apps.googleusercontent.com';
+const CLIENT_ID = '290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com';
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
 

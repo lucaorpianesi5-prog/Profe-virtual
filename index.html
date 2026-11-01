@@ -806,7 +806,7 @@ const fmt=v=>String(v).replace('.',',');
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
-  clientId:'290132927246-93jukcuetk56v3eva7e4upjlbck096sf.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
+  clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
 };
 const REAL=!!(CONFIG.proxy&&CONFIG.clientId)&&!new URLSearchParams(location.search).has('demo');
 const EJ=REAL?'':'ejemplo';   // en la demo, los textos de ejemplo van en cursiva
