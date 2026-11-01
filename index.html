@@ -514,6 +514,10 @@ button:active{transition:transform .1s}
 .week-sel .dn,.sel-lbl{display:none}
 .nota-chica.sep,.grafico-card.sep{margin-top:.8rem}
 .opcion-desc.n{color:var(--texto2)}
+.g-login{display:flex;justify-content:center;min-height:44px}
+.login-msg{font-size:.8rem;line-height:1.45;color:var(--amber);text-align:center}
+.login-msg:empty{display:none}
+.vacio{text-align:center;color:var(--texto2);font-size:.86rem;line-height:1.55;padding:1.4rem 1rem}
 .inst-link{display:flex;align-items:center;justify-content:center;gap:.4rem;align-self:center;min-height:44px;padding:0 1rem;font-size:.8rem;font-weight:700;color:var(--acento)}
 .inst-link[hidden]{display:none}
 .demo-link{display:none;align-self:center;min-height:44px;padding:0 1rem;font-size:.72rem;color:var(--texto3);text-decoration:underline}
@@ -639,8 +643,8 @@ button:active{transition:transform .1s}
     <button class="est-op" data-e="nocturno" aria-pressed="false"><span class="swatch"><i style="background:#13162A"></i><i style="background:#A7A3FF"></i><i style="background:#F2C48D"></i></span>Nocturno</button>
     <button class="est-op" data-e="calma" aria-pressed="false"><span class="swatch"><i style="background:#EEF3F1"></i><i style="background:#0F7A6E"></i><i style="background:#94622A"></i></span>Calma</button>
   </div>
-  <h2>Saltar a</h2>
-  <div class="saltos" id="saltos">
+  <h2 class="solo-demo">Saltar a</h2>
+  <div class="saltos solo-demo" id="saltos">
     <button class="salto" data-s="landing">Landing</button><button class="salto" data-s="iv">Entrevista</button><button class="salto" data-s="perfil">Perfil</button><button class="salto" data-s="plan">Plan</button><button class="salto" data-s="inicio">Inicio</button><button class="salto" data-s="sesion">Sesión</button><button class="salto" data-s="progreso">Progreso</button>
   </div>
   <h2>Qué cambia respecto al mockup</h2>
@@ -675,8 +679,10 @@ button:active{transition:transform .1s}
       </div>
     </div>
     <div class="foot">
+      <div class="g-login" id="g-login" hidden></div>
+      <p class="login-msg" id="login-msg" role="status"></p>
       <button class="btn btn-google" id="btn-login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 7l7.4 5.7c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>Entrar con Google</button>
-      <div class="legal">Creamos una planilla "Mi entrenamiento" en tu Drive. La app solo ve los archivos que ella misma crea. Tus datos de salud quedan en tu Drive.</div>
+      <div class="legal" id="legal">Creamos una planilla "Mi entrenamiento" en tu Drive. La app solo ve los archivos que ella misma crea. Tus datos de salud quedan en tu Drive.</div>
       <button class="inst-link" id="btn-instalar"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg>Instalar en este dispositivo</button>
       <button class="demo-link" id="btn-demo">Opciones de demo: estética y saltos</button>
     </div>
@@ -796,6 +802,20 @@ const vibra=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
 const ico=(n,c='')=>`<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const fmt=v=>String(v).replace('.',',');
 
+/* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
+   Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
+const CONFIG={
+  proxy:'',      // URL de la app web de Apps Script (termina en /exec)
+  clientId:''    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
+};
+const REAL=!!(CONFIG.proxy&&CONFIG.clientId)&&!new URLSearchParams(location.search).has('demo');
+const EJ=REAL?'':'ejemplo';   // en la demo, los textos de ejemplo van en cursiva
+const ls={
+  get(k,d=null){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+
 /* ───────── Estéticas ───────── */
 function setEstetica(n){
   est=n;
@@ -880,12 +900,14 @@ const DATOS={
  'Sentadilla goblet':[["10/9",12],["17/9",14],["24/9",16],["1/10",16],["8/10",18],["15/10",18],["22/10",20],["29/10",20]]
 };
 const SEMS=[['Sem 44',[1,1,0]],['Sem 43',[1,1,1]],['Sem 42',[1,1,1]],['Sem 41',[1,1,0]]];
-const LET=['L','M','X','J','V','S','D'], DIAS_N=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'], HOY=2;
+const LET=['L','M','X','J','V','S','D'], DIAS_N=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'], HOY=REAL?(new Date().getDay()+6)%7:2;
+const DIAS_DEF={1:[0],2:[0,3],3:[0,2,4],4:[0,1,3,4],5:[0,1,2,3,4],6:[0,1,2,3,4,5],7:[0,1,2,3,4,5,6]};   // si Luca no cargó días
 
 /* Registro de esfuerzo. Con "Ambos", Luca decide si el RPE va por serie o una vez al cerrar la sesión (§12). Recomendación: 'sesion'. */
 const CFG_AMBOS_RPE='sesion';
 const RPE_PAL={6:'fácil',7:'moderado',8:'duro',9:'muy duro',10:'máximo'};
-const S={pref:{esfuerzo:'nada',avisoVisto:false},ans:{},obj:[],princ:null,perfil:'constante',paso:0,ci:{sueno:3,estres:3,energia:3},reducida:false,days:[0,2,4],plan:JSON.parse(JSON.stringify(PLAN0)),tab:'inicio',ses:null,planDia:2,progEj:'Peso muerto rumano',progVista:'carga'};
+const S={pref:{esfuerzo:'nada',avisoVisto:false},ans:{},obj:[],princ:null,perfil:'constante',paso:0,ci:{sueno:3,estres:3,energia:3},reducida:false,days:[0,2,4],plan:JSON.parse(JSON.stringify(PLAN0)),letras:['A','B','C'],tab:'inicio',ses:null,sesElegida:null,planDia:HOY,progEj:'Peso muerto rumano',progVista:'carga',
+  alumno:null,cat:{},hist:[],sesiones:[]};   // datos reales: alumno, catálogo de ejercicios, series registradas y sesiones
 
 const hayRirSerie=()=>S.pref.esfuerzo==='rir'||S.pref.esfuerzo==='ambos';
 const hayRpeSerie=()=>S.pref.esfuerzo==='rpe'||(S.pref.esfuerzo==='ambos'&&CFG_AMBOS_RPE==='serie');
@@ -1057,15 +1079,15 @@ $('#btn-armar').onclick=()=>{
 };
 
 /* ───────── Plan ───────── */
-function semanaHTML(hoyMarca,hechoHasta){
-  const letras=['A','B','C'];
-  return LET.map((l,i)=>{const k=S.days.indexOf(i);const on=k>=0;const hecho=on&&i<hechoHasta;return `<div class="dia"><span class="dia-letra">${l}</span><span class="dia-bloque ${hecho?'hecho':on?'on':''} ${hoyMarca&&i===HOY?'hoy':''}">${hecho?ico('check'):on?letras[k]:''}</span></div>`}).join('');
+function semanaHTML(hoyMarca){
+  const hechos=hoyMarca?diasHechos():new Set();
+  return LET.map((l,i)=>{const k=S.days.indexOf(i);const on=k>=0;const hecho=hechos.has(i);return `<div class="dia"><span class="dia-letra">${l}</span><span class="dia-bloque ${hecho?'hecho':on?'on':''} ${hoyMarca&&i===HOY?'hoy':''}">${hecho?ico('check'):on?(S.letras[k]||''):''}</span></div>`}).join('');
 }
 function planInit(){
   const perfilN={deportista:'Deportista',constante:'Constante',explorador:'Explorador'}[S.perfil];
   $('#plan-tit').textContent=perfilN+' · '+S.days.length+' días';
   $('#plan-obj').innerHTML=ico('star')+' '+({'Ganar fuerza':'Fuerza','Mejorar movilidad':'Movilidad','Resistencia / cardio':'Resistencia','Composición corporal':'Composición','Rendimiento en mi deporte':'Rendimiento','Sentirme mejor en el día a día':'Bienestar','Otro':'Personal'}[S.princ]||'Fuerza');
-  $('#plan-semana').innerHTML=semanaHTML(false,0);
+  $('#plan-semana').innerHTML=semanaHTML(false);
   $('#plan-nivel').textContent=nivel(); $('#plan-dur').textContent=S.ans.dur||'60 min'; $('#plan-eq').textContent=S.ans.equip||'Gimnasio completo';
   $('#porques').innerHTML=porques().map((p,i)=>`<div class="acordeon ${i===0?'abierto':''}" style="margin-bottom:.55rem"><button class="acordeon-h"><span>${p[0]}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button><div class="acordeon-c"><div><p class="ejemplo">${p[1]}</p></div></div></div>`).join('');
 }
@@ -1079,26 +1101,64 @@ function setTab(t){
 }
 $('#tabbar').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t)});
 
-function sesionHoy(){const k=S.days.indexOf(HOY);return k<0?null:['A','B','C'][k]}
+function sesionHoy(){const k=S.days.indexOf(HOY);return k<0?null:S.letras[k]||null}
+/* Fechas locales en formato aaaa-mm-dd, que es como se guardan en la planilla */
+const isoDe=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const isoHoy=()=>isoDe(new Date());
+const ddmm=f=>{const p=String(f).split('-');return p.length===3?(+p[2])+'/'+(+p[1]):f};
+function lunesDe(d){const x=new Date(d);x.setHours(12,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+const fechaD=f=>new Date(f+'T12:00:00');
+/* Días de esta semana (0 = lunes) en los que hubo una sesión */
+function diasHechos(){
+  if(!REAL)return new Set(S.days.filter(d=>d<HOY));
+  const l=lunesDe(new Date()), s=new Set();
+  S.sesiones.forEach(x=>{const k=Math.round((fechaD(x.fecha)-l)/864e5);if(k>=0&&k<7)s.add(k)});
+  return s;
+}
+/* Sesiones por semana, de la actual hacia atrás */
+function semanasConteo(n){
+  const l0=lunesDe(new Date());
+  return Array.from({length:n},(_,k)=>{const ini=new Date(l0);ini.setDate(ini.getDate()-7*k);const fin=new Date(ini);fin.setDate(fin.getDate()+7);return {ini,cant:S.sesiones.filter(x=>{const d=fechaD(x.fecha);return d>=ini&&d<fin}).length}});
+}
+const metaSemanal=()=>Math.max(1,S.days.length-1);
+function racha(){
+  const w=semanasConteo(52), m=metaSemanal(); let r=w[0].cant>=m?1:0;
+  for(let k=1;k<w.length&&w[k].cant>=m;k++)r++;
+  return r;
+}
+function semIso(d){const t=new Date(d);t.setHours(0,0,0,0);t.setDate(t.getDate()+3-(t.getDay()+6)%7);const w1=new Date(t.getFullYear(),0,4);return 1+Math.round(((t-w1)/864e5-3+(w1.getDay()+6)%7)/7)}
+/* Próxima sesión: en la demo, la del día; con datos reales, la que sigue a la última que hiciste (A → B → C → A) */
+function proximaSesion(){
+  if(!REAL)return sesionHoy();
+  if(!S.letras.length)return null;
+  const ult=[...S.sesiones].sort((a,b)=>(a.fecha+a.id).localeCompare(b.fecha+b.id)).pop();
+  const k=ult?S.letras.indexOf(ult.sesion):-1;
+  return S.letras[(k+1)%S.letras.length];
+}
 function renderApp(){
-  const l=sesionHoy(), pl=l&&S.plan[l];
-  const hechoHasta=Math.min(HOY,7);
-  const nombre='Carla';
+  const l=proximaSesion(), pl=l&&S.plan[l];
+  const nombre=REAL?(S.alumno.nombre||S.alumno.email.split('@')[0]):'Carla';
+  const inic=nombre.split(/\s+/).filter(Boolean).map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  const hechos=diasHechos(), entrenoHoy=REAL&&S.sesiones.some(x=>x.fecha===isoHoy());
+  const etiqueta=entrenoHoy?'Próxima sesión':'Hoy · '+DIAS_N[HOY].toLowerCase();
+  const r=REAL?racha():4;
   $('#inicio-c').innerHTML=`
-   <div class="app-top"><div><div class="saludo">Hola de nuevo,</div><div class="saludo-nombre">${nombre}</div></div><div class="avatar">CR</div></div>
-   ${pl?`<div class="hoy-card"><div class="card-label">Hoy · miércoles</div><div class="sesion-tit">Sesión ${l} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ~60 min</div>
+   <div class="app-top"><div><div class="saludo">Hola de nuevo,</div><div class="saludo-nombre">${nombre}</div></div><div class="avatar">${inic}</div></div>
+   ${pl?`<div class="hoy-card"><div class="card-label">${etiqueta}${entrenoHoy?' · hoy ya entrenaste '+ico('check'):''}</div><div class="sesion-tit">Sesión ${l} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${pl.ej.reduce((a,e)=>a+e.s,0)} series</div>
      <div class="sesion-lista">${pl.ej.slice(0,3).map(e=>`<div class="sesion-item"><span>${e.n}</span><span>${e.s} × ${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}</span></div>`).join('')}${pl.ej.length>3?`<div class="sesion-item mas"><span>+ ${pl.ej.length-3} más</span><span></span></div>`:''}</div>
-     <button class="btn" id="btn-ses">Empezar sesión</button></div>`
+     <button class="btn" id="btn-ses">Empezar sesión ${REAL?l:''}</button></div>`
+   :REAL?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá. Si ya te avisó que está listo, volvé a abrir la app.</div></div>`
    :`<div class="hoy-card"><div class="card-label">Hoy · miércoles</div><div class="sesion-tit">Hoy descansás ${ico('moon')}</div><div class="sesion-meta">El descanso también es entrenamiento.</div></div>`}
-   <div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="card-label">Esta semana</div><div style="font-size:.76rem;color:var(--texto2)"><b style="color:var(--texto)">${S.days.filter(d=>d<HOY).length} de ${S.days.length}</b> · racha 4 semanas</div></div><div class="semana">${semanaHTML(true,hechoHasta)}</div></div>
-   <button class="tip" id="tip-mov"><span class="tip-icono">${ico('activity')}</span><div><div class="tip-tit">Trabajás sentada muchas horas</div><div class="tip-txt ejemplo">Dos minutos de movilidad de cadera cada hora compensan más que una sesión larga el fin de semana.</div><div class="tip-mas">Ver cómo ${ico('chev')}</div></div></button>`;
-  const b=$('#btn-ses'); if(b)b.onclick=abrirCheckin;
-  $('#tip-mov').onclick=()=>sheet(`<div class="sheet-col">${ico('activity','big-ic')}<h3>Movilidad de cadera en la oficina</h3><p class="ejemplo" style="font-size:.84rem;line-height:1.55">Cada hora, parate y hacé 10 círculos de cadera por lado y 5 sentadillas lentas. Dos minutos alcanzan.</p><button class="btn" onclick="cerrar()">Entendido</button></div>`);
+   <div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="card-label">Esta semana</div><div style="font-size:.76rem;color:var(--texto2)"><b style="color:var(--texto)">${hechos.size} de ${S.days.length}</b>${r>1?` · racha ${r} semanas`:''}</div></div><div class="semana">${semanaHTML(true)}</div></div>
+   ${REAL?'':`<button class="tip" id="tip-mov"><span class="tip-icono">${ico('activity')}</span><div><div class="tip-tit">Trabajás sentada muchas horas</div><div class="tip-txt ejemplo">Dos minutos de movilidad de cadera cada hora compensan más que una sesión larga el fin de semana.</div><div class="tip-mas">Ver cómo ${ico('chev')}</div></div></button>`}`;
+  const b=$('#btn-ses'); if(b)b.onclick=()=>abrirCheckin(l);
+  if($('#tip-mov'))$('#tip-mov').onclick=()=>sheet(`<div class="sheet-col">${ico('activity','big-ic')}<h3>Movilidad de cadera en la oficina</h3><p class="ejemplo" style="font-size:.84rem;line-height:1.55">Cada hora, parate y hacé 10 círculos de cadera por lado y 5 sentadillas lentas. Dos minutos alcanzan.</p><button class="btn" onclick="cerrar()">Entendido</button></div>`);
   renderMiPlan(); renderMas();
 }
 
 /* Check-in */
-function abrirCheckin(){
+function abrirCheckin(L){
+  S.sesElegida=typeof L==='string'?L:proximaSesion();
   const ci=S.ci;
   const filas=[['sueno',ico('moon')+'Sueño','¿Cómo dormiste?'],['estres',ico('wind')+'Estrés','1 = mucho estrés'],['energia',ico('bolt')+'Energía','']];
   sheet(`<div class="sheet-col"><div><h3>¿Cómo llegás hoy?</h3><p class="sub">Tarda 3 segundos y ajusta tu sesión.</p></div>
@@ -1132,36 +1192,70 @@ const CUES={
  'Step-up':{c:['Cajón a la altura de la rodilla, pie entero apoyado.','Subí empujando con la pierna de arriba, sin impulsarte con la de abajo.','Bajá lento y repetí del mismo lado.'],err:'Empujarse con el pie de atrás.',mus:['Cuádriceps','Glúteos']},
  'Dead bug':{c:['Boca arriba, brazos al techo y rodillas a 90°.','Estirá brazo y pierna contrarios sin despegar la espalda baja del piso.','Volvé y cambiá de lado con calma.'],err:'Arquear la espalda al estirar la pierna.',mus:['Abdomen profundo']}
 };
-function info(e){return CUES[e.n]||{c:['Movete con control y sin apuro.','Exhalá en el momento de más esfuerzo.','Frená la serie si perdés la técnica.'],err:'Subir la carga antes de dominar el movimiento.',mus:[e.pat]}}
-function lastSets(e){return Array.from({length:e.s},(_,j)=>({kg:e.kg,reps:(j===e.s-1&&e.r[1]>6)?e.r[1]-1:e.r[1]}))}
-function lastTxt(e){return lastSets(e).map(x=>(e.kg?fmt(x.kg)+'×':'')+x.reps).join(' · ')}
-function tecHTML(e){
-  const f=info(e), por=e.por||('Trabaja el patrón de '+e.pat.toLowerCase()+', que tu plan repite varias veces por semana.');
-  return `<div class="card-label">Cómo hacerlo</div><ol class="cues">${f.c.map((c,k)=>`<li><span class="cue-n">${k+1}</span><span class="ejemplo">${c}</span></li>`).join('')}</ol>
-  <div class="error"><div class="porque-tit" style="color:var(--amber)">Error común</div><div class="porque-txt ejemplo">${f.err}</div></div>
-  <div class="fila" style="margin:0">${f.mus.map(m=>`<span class="pill">${m}</span>`).join('')}</div>
-  <div class="porque"><div class="porque-tit">Por qué está en tu plan</div><div class="porque-txt ejemplo">${por}</div></div>`;
+const CUES_GEN={c:['Movete con control y sin apuro.','Exhalá en el momento de más esfuerzo.','Frená la serie si perdés la técnica.'],err:'Subir la carga antes de dominar el movimiento.'};
+function info(e){
+  if(e.como&&e.como.length)return {c:e.como,err:e.err||'',mus:e.mus&&e.mus.length?e.mus:(e.pat?[e.pat]:[])};   // de la hoja Ejercicios
+  return CUES[e.n]||{...CUES_GEN,mus:e.pat?[e.pat]:[]};
 }
-function videoSheet(n){ sheet(`<div class="sheet-col"><h3>${n}</h3><div class="video-fake">${ico('play')}</div><p class="sub" style="margin:0">Abre el video en YouTube (no listado).</p><button class="btn" onclick="cerrar()">Cerrar</button></div>`); }
+/* Última vez que hiciste este ejercicio: en la demo es inventada; con datos reales sale del registro */
+function ultimaVez(e){
+  const f=S.hist.filter(h=>h.ej===e.n); if(!f.length)return null;
+  const u=f.reduce((a,b)=>(b.fecha+b.id)>(a.fecha+a.id)?b:a);
+  return {fecha:u.fecha,sets:f.filter(h=>h.id===u.id).sort((a,b)=>a.serie-b.serie)};
+}
+function lastSets(e){
+  if(!REAL)return Array.from({length:e.s},(_,j)=>({kg:e.kg,reps:(j===e.s-1&&e.r[1]>6)?e.r[1]-1:e.r[1]}));
+  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir})):[];
+}
+function lastTxt(e){const ls_=lastSets(e);return ls_.map(x=>(x.kg?fmt(x.kg)+'×':'')+x.reps).join(' · ')}
+const lastFecha=e=>{if(!REAL)return '29/10';const u=ultimaVez(e);return u?ddmm(u.fecha):''};
+const mejorKg=e=>REAL?Math.max(0,...S.hist.filter(h=>h.ej===e.n).map(h=>h.kg||0)):Math.max(...lastSets(e).map(x=>x.kg));
+/* Doble progresión (§8, a validar por Luca): si la última vez llegaste al tope del rango en todas las series
+   (con RIR 2 o más, si lo registraste), se sugiere subir. Con cargas chicas el salto es de 1 kg. */
+const incremento=kg=>kg<10?1:2.5;
+function sugerida(e){
+  if(!REAL)return e.kg;
+  const ls_=lastSets(e); if(!ls_.length)return e.kg||0;
+  const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return e.kg||0;
+  const tope=ls_.length>=e.s&&ls_.every(s=>s.reps>=e.r[1]&&(s.rir==null||s.rir>=2));
+  return tope?+(max+incremento(max)).toFixed(1):max;
+}
+function tecHTML(e){
+  const f=info(e), por=e.por||(e.pat?'Trabaja el patrón de '+e.pat.toLowerCase()+', que tu plan repite varias veces por semana.':'');
+  return `<div class="card-label">Cómo hacerlo</div><ol class="cues">${f.c.map((c,k)=>`<li><span class="cue-n">${k+1}</span><span class="${EJ}">${c}</span></li>`).join('')}</ol>
+  ${f.err?`<div class="error"><div class="porque-tit" style="color:var(--amber)">Error común</div><div class="porque-txt ${EJ}">${f.err}</div></div>`:''}
+  ${f.mus.length?`<div class="fila" style="margin:0">${f.mus.map(m=>`<span class="pill">${m}</span>`).join('')}</div>`:''}
+  ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
+  ${por?`<div class="porque"><div class="porque-tit">Por qué está en tu plan</div><div class="porque-txt ${EJ}">${por}</div></div>`:''}`;
+}
+/* Video: con datos reales abre el link de YouTube que cargó Luca */
+function verVideo(e){
+  if(e.video){window.open(e.video,'_blank','noopener');return}
+  if(REAL){snack('Todavía no hay video para este ejercicio');return}
+  sheet(`<div class="sheet-col"><h3>${e.n}</h3><div class="video-fake">${ico('play')}</div><p class="sub" style="margin:0">Abre el video en YouTube (no listado).</p><button class="btn" onclick="cerrar()">Cerrar</button></div>`);
+}
+const hayVideo=e=>!REAL||!!e.video;
 function renderMiPlan(){
-  const sel=S.planDia, k=S.days.indexOf(sel), L=k>=0?['A','B','C'][k]:null, pl=L&&S.plan[L], esHoy=sel===HOY;
+  const sel=S.planDia, k=S.days.indexOf(sel), L=k>=0?S.letras[k]||null:null, pl=L&&S.plan[L], esHoy=sel===HOY, hechos=diasHechos();
   const hay=pl?pl.ej.reduce((a,e)=>a+e.s,0):0;
-  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${$('#plan-tit').textContent} · semana 3 de 6 · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
-  <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${kk>=0&&i<HOY?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${kk>=0?['A','B','C'][kk]:'·'}</b></button>`}).join('')}</div></div>
-  <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series · ~60 min</div></div>
-  <div class="ej-cards">${pl.ej.map((e,i)=>`<div class="acordeon ej-card" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat} · ${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}</small><em>Última vez: ${lastTxt(e)}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones"><button class="video" data-pa="video">${ico('play')}Video</button><button data-pa="cambiar">${ico('swap')}Cambiar</button></div></div></div></div></div>`).join('')}</div>`
+  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${REAL?S.days.length+' días por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
+  <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${hechos.has(i)?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${kk>=0?S.letras[kk]||'·':'·'}</b></button>`}).join('')}</div></div>
+  <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series</div></div>
+  <div class="ej-cards">${pl.ej.map((e,i)=>`<div class="acordeon ej-card" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat?e.pat+' · ':''}${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.seg?' seg':''}</small><em>${lastSets(e).length?'Última vez: '+lastTxt(e):'Todavía sin registros'}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-pa="video">${ico('play')}Video</button>`:''}${REAL?'':`<button data-pa="cambiar">${ico('swap')}Cambiar</button>`}</div></div></div></div></div>`).join('')}</div>`
+  :REAL&&!S.letras.length?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá.</div></div>`
   :`<div class="hoy-card"><div class="card-label">${DIAS_N[sel]}</div><div class="sesion-tit">Día de descanso ${ico('moon')}</div><div class="sesion-meta">El descanso también es entrenamiento: el músculo se adapta mientras descansás.</div></div>`}</div>`;
   $('#btn-dias').onclick=abrirDias;
-  $('#plan-foot').innerHTML=(pl&&esHoy)?`<button class="btn" id="plan-go">Empezar sesión ${L}</button>`:'';
-  $('#plan-foot').style.display=(pl&&esHoy)?'':'none';
-  const go=$('#plan-go'); if(go)go.onclick=abrirCheckin;
+  /* Cualquier sesión del plan se puede empezar desde acá, no solo la de hoy */
+  $('#plan-foot').innerHTML=pl?`<button class="btn" id="plan-go">Empezar sesión ${L}</button>`:'';
+  $('#plan-foot').style.display=pl?'':'none';
+  const go=$('#plan-go'); if(go)go.onclick=()=>abrirCheckin(L);
 }
 $('#plan-c').addEventListener('click',e=>{
   const wk=e.target.closest('#week-sel button'); if(wk){S.planDia=+wk.dataset.d;vibra(8);renderMiPlan();return}
   const card=e.target.closest('.ej-card'); if(!card)return;
   const L=card.dataset.l,i=+card.dataset.i,ex=S.plan[L].ej[i];
   const pa=e.target.closest('[data-pa]');
-  if(pa){ if(pa.dataset.pa==='video')videoSheet(ex.n); else abrirCambio(L,i); return }
+  if(pa){ if(pa.dataset.pa==='video')verVideo(ex); else abrirCambio(L,i); return }
   if(e.target.closest('.ej-h')){ const abierto=card.classList.contains('abierto'); $$('#plan-c .ej-card').forEach(c=>c.classList.remove('abierto')); if(!abierto){card.classList.add('abierto');setTimeout(()=>card.scrollIntoView({behavior:'smooth',block:'nearest'}),360)} vibra(6); }
 });
 function abrirCambio(L,i){
@@ -1181,7 +1275,11 @@ function abrirDias(){
       const i=+b.dataset.i; if(sel.includes(i))sel=sel.filter(x=>x!==i); else if(sel.length<S.days.length)sel.push(i); else {vibra([10,40,10]);return}
       b.classList.toggle('sel'); vibra(6);
     });
-    $('#dg-ok').onclick=()=>{ if(sel.length!==S.days.length){snack(`Elegí ${S.days.length} días`);return} S.days=sel.sort((a,b)=>a-b); cerrar(); renderApp(); snack('Días actualizados'); };
+    $('#dg-ok').onclick=()=>{
+      if(sel.length!==S.days.length){snack(`Elegí ${S.days.length} días`);return}
+      S.days=sel.sort((a,b)=>a-b); cerrar(); renderApp(); snack('Días actualizados');
+      if(REAL){const dias=S.days.map(i=>LET[i]).join(',');S.alumno.dias=dias;guardaCache();api('preferencias',{dias}).catch(()=>{})}
+    };
   });
 }
 
@@ -1190,21 +1288,32 @@ const ESF_NOM={nada:'Nada',rir:'RIR',rpe:'RPE',ambos:'RIR + RPE'};
 const SALTOS=[['landing','Landing'],['iv','Entrevista'],['perfil','Perfil'],['plan','Plan'],['inicio','Inicio'],['sesion','Sesión'],['progreso','Progreso']];
 const ESTETICAS=[['bosque','Bosque','#111B16','#4AB870','#C8A87A'],['papel','Papel','#F5F6F8','#2346D8','#C2410C'],['nocturno','Nocturno','#13162A','#A7A3FF','#F2C48D'],['calma','Calma','#EEF3F1','#0F7A6E','#94622A']];
 function renderMas(){
+  const al=S.alumno||{}, pend=pendientes().length;
+  const venc=al.vencimiento?'Vence el '+ddmm(al.vencimiento):'Activa';
   $('#mas-c').innerHTML=`<div class="tt">Más</div>
+   ${REAL&&al.email?`<p class="sub-t" style="margin:0">${al.email}</p>`:''}
    <div class="lista-mas">
     <button class="sust-op" id="m-inst"><span>${ico('download')}Instalar en este dispositivo</span><small>${esStandalone()?'Instalada':''}</small></button>
     <button class="sust-op" id="m-esf"><span>${ico('pulse')}Registro de esfuerzo</span><small>${ESF_NOM[S.pref.esfuerzo]}</small></button>
     <button class="sust-op" id="m-est"><span>${ico('palette')}Estética</span><small>${est}</small></button>
-    <button class="sust-op" id="m-saltos"><span>${ico('list')}Saltar a… (demo)</span><small></small></button>
-    <button class="sust-op" id="m-sub"><span>${ico('card')}Mi suscripción</span><small>Activa</small></button>
-    <button class="sust-op" id="m-reset"><span>${ico('refresh')}Reiniciar demo</span><small></small></button>
-   </div><p class="nota-chica">Más reúne lo que no se usa a diario: suscripción, ajustes y la re-entrevista de cada mesociclo.</p>`;
+    ${REAL?`<button class="sust-op" id="m-sync"><span>${ico('refresh')}Sincronizar</span><small>${pend?pend+' sin guardar':'Al día'}</small></button>`
+          :`<button class="sust-op" id="m-saltos"><span>${ico('list')}Saltar a… (demo)</span><small></small></button>`}
+    <button class="sust-op" id="m-sub"><span>${ico('card')}Mi suscripción</span><small>${REAL?venc:'Activa'}</small></button>
+    ${REAL?`<button class="sust-op" id="m-salir"><span>${ico('back')}Cerrar sesión</span><small></small></button>`
+          :`<button class="sust-op" id="m-reset"><span>${ico('refresh')}Reiniciar demo</span><small></small></button>`}
+   </div><p class="nota-chica">${REAL?'Tus sesiones se guardan primero en este dispositivo y después en el registro de Luca: si entrenás sin señal, se suben solas cuando vuelve la conexión.':'Más reúne lo que no se usa a diario: suscripción, ajustes y la re-entrevista de cada mesociclo.'}</p>`;
   $('#m-inst').onclick=abrirInstalar;
   $('#m-esf').onclick=()=>sheetEsfuerzo('mas');
   $('#m-est').onclick=()=>abrirDemo('est');
-  $('#m-saltos').onclick=()=>abrirDemo('saltos');
-  $('#m-sub').onclick=()=>snack('Tu suscripción vence el 05/12');
-  $('#m-reset').onclick=()=>location.reload();
+  if(REAL){
+    $('#m-sync').onclick=()=>{ if(!pendientes().length){snack('Todo está guardado en tu registro');refrescar();return} sincronizar(true) };
+    $('#m-sub').onclick=()=>snack(al.vencimiento?`Tu suscripción vence el ${ddmm(al.vencimiento)}${al.monto?' · $'+al.monto.toLocaleString('es-AR'):''}`:'Tu suscripción está activa');
+    $('#m-salir').onclick=cerrarSesion;
+  }else{
+    $('#m-saltos').onclick=()=>abrirDemo('saltos');
+    $('#m-sub').onclick=()=>snack('Tu suscripción vence el 05/12');
+    $('#m-reset').onclick=()=>location.reload();
+  }
 }
 /* Instalar la app en el dispositivo (PWA). Chrome y Edge ofrecen un diálogo propio; Safari de iPad no, ahí se explica el paso a paso. */
 const esStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -1250,12 +1359,15 @@ function explicaEsfuerzo(que,volver){
 }
 document.addEventListener('click',e=>{const i=e.target.closest('[data-info]'); if(i)explicaEsfuerzo(i.dataset.info)});
 function sheetEsfuerzo(origen){
-  S.pref.avisoVisto=true;
+  S.pref.avisoVisto=true; ls.set('pv-aviso',1);
   const ops=[['nada','Nada','Solo carga y repeticiones.'],['rir','RIR','Cuántas repeticiones te sobraron, en cada serie.'],['rpe','RPE','Qué tan duro se sintió, en cada serie.'],['ambos','Ambos',CFG_AMBOS_RPE==='sesion'?'RIR en cada serie y RPE al cerrar la sesión.':'RIR y RPE en cada serie.']];
   sheet(`<div class="sheet-col"><div><h3>${origen==='aviso'?'¿Querés registrar cómo te sentís?':'Registro de esfuerzo'}</h3><p class="sub">Anotar cuánto te costó cada serie es opcional. Lo cambiás cuando quieras en Más.</p></div>
    <div class="opciones">${ops.map(([k,t,d])=>`<button class="opcion ${S.pref.esfuerzo===k?'sel':''}" data-k="${k}"><span class="opcion-radio"></span><span><span class="opcion-tit">${t}</span><span class="opcion-desc n">${d}</span></span></button>`).join('')}</div>
    <button class="btn sec chico" id="ef-info">${ico('info')}¿Qué es esto?</button></div>`,()=>{
-    $$('#sheet-c .opcion').forEach(b=>b.onclick=()=>{S.pref.esfuerzo=b.dataset.k;cerrar();pintaEsfuerzo();renderMas();snack('Registro de esfuerzo: '+ESF_NOM[S.pref.esfuerzo].toLowerCase());vibra(10)});
+    $$('#sheet-c .opcion').forEach(b=>b.onclick=()=>{
+      S.pref.esfuerzo=b.dataset.k;cerrar();pintaEsfuerzo();renderMas();snack('Registro de esfuerzo: '+ESF_NOM[S.pref.esfuerzo].toLowerCase());vibra(10);
+      if(REAL){S.alumno.esfuerzo=S.pref.esfuerzo;guardaCache();api('preferencias',{esfuerzo:S.pref.esfuerzo}).catch(()=>{})}
+    });
     $('#ef-info').onclick=()=>explicaEsfuerzo('ambos',()=>sheetEsfuerzo(origen));
   });
 }
@@ -1265,22 +1377,40 @@ function pintaEsfuerzo(){
 }
 
 /* ───────── Progreso ───────── */
+/* Carga máxima de cada sesión, por ejercicio, en orden de fecha: { ejercicio: [['dd/mm', kg], …] } */
+function datosProg(){
+  const por={};
+  [...S.hist].sort((a,b)=>(a.fecha+a.id).localeCompare(b.fecha+b.id)).forEach(h=>{
+    if(!(h.kg>0))return;
+    const l=por[h.ej]=por[h.ej]||[], u=l[l.length-1];
+    if(u&&u.id===h.id)u.kg=Math.max(u.kg,h.kg); else l.push({id:h.id,f:h.fecha,kg:h.kg});
+  });
+  const r={}; Object.keys(por).sort((a,b)=>por[b].length-por[a].length).forEach(k=>r[k]=por[k].map(x=>[ddmm(x.f),x.kg]));
+  return r;
+}
 function renderProgreso(){
-  const ejs=Object.keys(DATOS);
+  const D=REAL?datosProg():DATOS, ejs=Object.keys(D);
+  if(!ejs.includes(S.progEj))S.progEj=ejs[0]||'';
   $('#prog-c').innerHTML=`<div class="tt">Tu progreso</div>
    <div class="seg" id="seg"><span class="seg-ind" style="transform:translateX(${S.progVista==='carga'?0:100}%)"></span><button data-v="carga" class="${S.progVista==='carga'?'on':''}">Cargas</button><button data-v="cons" class="${S.progVista==='cons'?'on':''}">Constancia</button></div>
    <div id="prog-cuerpo"></div>`;
   $('#seg').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.progVista=b.dataset.v;vibra(8);renderProgreso()};
   const cu=$('#prog-cuerpo');
-  if(S.progVista==='carga'){
+  if(S.progVista==='carga'&&!ejs.length){
+    cu.innerHTML=`<div class="card vacio">Todavía no hay cargas registradas.<br>Completá tu primera sesión y acá vas a ver cómo progresás en cada ejercicio.</div>`;
+  }else if(S.progVista==='carga'){
     cu.innerHTML=`<div class="prog-split"><div class="prog-sel"><div class="card-label sel-lbl">Ejercicio</div><div class="chips-scroll">${ejs.map(n=>`<button class="chip ${n===S.progEj?'sel':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
     <div class="prog-graf"><div class="grafico-card sep"><div class="grafico-head"><span class="grafico-tit">Carga de trabajo (kg)</span><span class="grafico-delta" id="g-delta"></span></div><div class="grafico-wrap" id="grafico"><svg viewBox="0 0 300 160"></svg><div class="tooltip" id="tooltip"></div></div><p class="nota-chica" style="margin-top:.4rem;text-align:center">Deslizá o tocá sobre el gráfico</p></div>
-    <p class="nota-chica sep">En el perfil Explorador, este bloque muestra movilidad y sensaciones en vez de cargas.</p></div></div>`;
+    ${REAL?'':'<p class="nota-chica sep">En el perfil Explorador, este bloque muestra movilidad y sensaciones en vez de cargas.</p>'}</div></div>`;
     cu.querySelector('.chips-scroll').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;S.progEj=b.dataset.e;vibra(8);renderProgreso()};
-    grafico(DATOS[S.progEj]);
+    const datos=D[S.progEj];
+    if(datos.length<2){ $('#grafico').innerHTML=`<p class="vacio">Con una sesión más de este ejercicio vas a ver la curva.<br>Por ahora: <b>${fmt(datos[0][1])} kg</b> el ${datos[0][0]}.</p>`; $('#grafico').nextElementSibling.hidden=true; }
+    else grafico(datos);
   }else{
-    cu.innerHTML=`<div class="card"><div class="card-label">Constancia · últimas 4 semanas</div><div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.9rem">${SEMS.map(([s,d])=>`<div class="cons-fila"><span>${s}</span><span class="cons-dots">${d.map(x=>`<i class="${x?'ok':''}"></i>`).join('')}</span><span>${d.filter(Boolean).length}/3</span></div>`).join('')}</div></div>
-    <div class="logro" style="margin-top:.8rem">${ico('flame')}<span>Racha de <b>4 semanas</b> cumpliendo al menos 2 sesiones.</span></div>`;
+    const total=REAL?S.days.length:3, m=REAL?metaSemanal():2, r=REAL?racha():4;
+    const filasC=REAL?semanasConteo(4).map(w=>['Sem '+semIso(w.ini),Array.from({length:Math.max(total,w.cant)},(_,k)=>k<w.cant?1:0)]):SEMS;
+    cu.innerHTML=`<div class="card"><div class="card-label">Constancia · últimas 4 semanas</div><div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.9rem">${filasC.map(([s,d])=>`<div class="cons-fila"><span>${s}</span><span class="cons-dots">${d.map(x=>`<i class="${x?'ok':''}"></i>`).join('')}</span><span>${d.filter(Boolean).length}/${total}</span></div>`).join('')}</div></div>
+    <div class="logro" style="margin-top:.8rem">${ico('flame')}<span>${r?`Racha de <b>${r} semana${r>1?'s':''}</b> cumpliendo al menos ${m} sesion${m>1?'es':''}.`:`Tu racha arranca cuando completes <b>${m} sesion${m>1?'es':''}</b> en una semana.`}</span></div>`;
   }
 }
 function grafico(datos){
@@ -1291,13 +1421,14 @@ function grafico(datos){
   const x=i=>pl+i*(W-pl-pr)/(datos.length-1), y=v=>pt+(mx-v)*(H-pt-pb)/(mx-mn);
   const ns='http://www.w3.org/2000/svg',el=(t,a)=>{const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);return e};
   [mn,(mn+mx)/2,mx].forEach(v=>{svg.appendChild(el('line',{x1:pl,x2:W-pr,y1:y(v),y2:y(v),class:'g-grid'}));const t=el('text',{x:pl-6,y:y(v)+3,'text-anchor':'end',class:'g-eje'});t.textContent=fmt(v);svg.appendChild(t)});
-  [0,3,datos.length-1].forEach(i=>{const t=el('text',{x:x(i),y:H-6,'text-anchor':i===datos.length-1?'end':(i===0?'start':'middle'),class:'g-eje'});t.textContent=datos[i][0];svg.appendChild(t)});
+  [...new Set([0,Math.floor((datos.length-1)/2),datos.length-1])].forEach(i=>{const t=el('text',{x:x(i),y:H-6,'text-anchor':i===datos.length-1?'end':(i===0?'start':'middle'),class:'g-eje'});t.textContent=datos[i][0];svg.appendChild(t)});
   const cross=el('line',{y1:pt,y2:H-pb,class:'g-cross',opacity:0});svg.appendChild(cross);
   svg.appendChild(el('polyline',{points:datos.map((d,i)=>x(i)+','+y(d[1])).join(' '),class:'g-linea'}));
   const pts=datos.map((d,i)=>{const c=el('circle',{cx:x(i),cy:y(d[1]),r:4,class:'g-punto'});svg.appendChild(c);return c});
   const u=datos[datos.length-1][1],f=datos[0][1];
   const et=el('text',{x:x(datos.length-1),y:y(u)-10,'text-anchor':'end',class:'g-etq'});et.textContent=fmt(u)+' kg';svg.appendChild(et);
-  $('#g-delta').innerHTML=`<b>+${fmt(u-f)} kg</b> en ${datos.length} semanas`;
+  const dif=+(u-f).toFixed(1);
+  $('#g-delta').innerHTML=`<b>${dif>=0?'+':''}${fmt(dif)} kg</b> en ${datos.length} ${REAL?'sesiones':'semanas'}`;
   let ult=-1;
   function mover(ev){
     const r=svg.getBoundingClientRect(),sx=(ev.clientX-r.left)*W/r.width;
@@ -1327,12 +1458,18 @@ async function wake(on){
   return !on;
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&$('#sesion').classList.contains('on'))wake(true) });
+function arrancarReloj(){
+  $('#ses-t').textContent=mmss(Math.round((Date.now()-S.ses.t0)/1000)); clearInterval(clk);
+  clk=setInterval(()=>{$('#ses-t').textContent=mmss(Math.round((Date.now()-S.ses.t0)/1000))},1000);
+}
+/* Cada cambio de la sesión en curso queda en el dispositivo: si se cierra la app o se apaga el iPad, se retoma */
+function guardaSesLocal(){ if(REAL&&S.ses&&S.alumno)ls.set('pv-ses',{para:S.alumno.email,ses:S.ses}) }
 function iniciar(reducida){
-  cerrar(); S.reducida=reducida; S.ci={sueno:3,estres:3,energia:3};
-  const L=sesionHoy(), pl=S.plan[L];
-  S.ses={L,t0:Date.now(),idx:0,prs:0,cur:null,ex:pl.ej.map(e=>({...e,pr:false,sets:Array.from({length:Math.max(1,e.s-(reducida?1:0))},()=>({kg:e.kg,reps:e.r[1],done:false,rir:null,rpe:null}))})),rpeSes:null};
-  renderSesion(); show('sesion','d'); pintaEsfuerzo();
-  $('#ses-t').textContent='0:00'; clearInterval(clk); clk=setInterval(()=>{$('#ses-t').textContent=mmss(Math.round((Date.now()-S.ses.t0)/1000))},1000);
+  cerrar(); S.reducida=reducida; const ci={...S.ci}; S.ci={sueno:3,estres:3,energia:3};
+  const L=S.sesElegida||proximaSesion(), pl=S.plan[L]; S.sesElegida=null;
+  S.ses={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),fecha:isoHoy(),L,t0:Date.now(),idx:0,prs:0,cur:null,ci,reducida,rpeSes:null,
+    ex:pl.ej.map(e=>{const kg=sugerida(e);return {...e,kgSug:kg,pr:false,sets:Array.from({length:Math.max(1,e.s-(reducida?1:0))},()=>({kg,reps:e.r[1],done:false,rir:null,rpe:null}))}})};
+  renderSesion(); show('sesion','d'); pintaEsfuerzo(); guardaSesLocal(); arrancarReloj();
   wake(true).then(ok=>setTimeout(()=>snack(reducida?'Versión liviana: una serie menos por ejercicio':ok?'La pantalla queda encendida durante la sesión':'Este navegador no mantiene la pantalla encendida: si se apaga, tocala para seguir.'),500));
   if(!S.pref.avisoVisto)setTimeout(()=>{if($('#sesion').classList.contains('on'))sheetEsfuerzo('aviso')},1200);
 }
@@ -1342,25 +1479,33 @@ function renderSesion(){
    <div><div class="ej-patron">${e.pat}</div><div class="ej-nombre">${e.n}</div></div>
    <div class="seg pg-seg"><span class="seg-ind"></span><button class="on" data-pane="reg">Registrar</button><button data-pane="tec">Técnica</button></div>
    <div class="pane pane-reg">
-     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">Descanso</div><div class="presc-val">${mmss(e.d)}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kg?fmt(e.kg)+' kg':'—'}</div></div></div>
-     <div class="ultima"><div><span class="u-l">Última vez · 29/10</span><span class="u-v">${lastTxt(e)}</span></div><button class="u-b" data-a="repetir">Repetir</button></div>
+     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">Descanso</div><div class="presc-val">${mmss(e.d)}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
+     ${lastSets(e).length?`<div class="ultima"><div><span class="u-l">Última vez · ${lastFecha(e)}</span><span class="u-v">${lastTxt(e)}</span></div><button class="u-b" data-a="repetir">Repetir</button></div>`
+       :`<div class="ultima"><div><span class="u-l">Primera vez</span><span class="u-v">Elegí una carga cómoda y anotala</span></div></div>`}
+     ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
      <div class="series" data-i="${i}"></div>
      <div class="nota-chica nota-prog"></div>
    </div>
-   <div class="pane pane-tec" hidden>${tecHTML(e)}<div class="ej-acciones"><button class="video" data-a="video">${ico('play')}Video</button><button data-a="reg">${ico('down')}Regresión</button><button data-a="prog">${ico('up')}Progresión</button></div></div>
+   <div class="pane pane-tec" hidden>${tecHTML(e)}${accionesTec(e)}</div>
   </div>`).join('');
   ses.ex.forEach((_,i)=>pintaSeries(i));
   $('#pager').scrollLeft=0; ses.idx=0; actualizaTop(); pintaEsfuerzo();
 }
+/* Video, regresión y progresión. Con datos reales, regresión y progresión salen de la hoja Ejercicios */
+function accionesTec(e){
+  const reg=!REAL||!!e.reg, prog=!REAL||!!e.prog;
+  if(!hayVideo(e)&&!reg&&!prog)return '';
+  return `<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-a="video">${ico('play')}Video</button>`:''}${reg?`<button data-a="reg">${ico('down')}Regresión</button>`:''}${prog?`<button data-a="prog">${ico('up')}Progresión</button>`:''}</div>`;
+}
 function pintaSeries(i){
-  const e=S.ses.ex[i], c=$(`.series[data-i="${i}"]`); const sec=e.n==='Plancha';
-  c.innerHTML=`<div class="serie"><span></span><span class="serie-head">kg</span><span class="serie-head">${sec?'Seg':'Reps'}</span><span></span></div>`+e.sets.map((s,j)=>`<div class="serie ${s.done?'hecha':''}" data-j="${j}"><span class="serie-n">${j+1}</span><div class="step" data-f="kg"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${e.kg||s.kg?fmt(s.kg):'—'}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><div class="step" data-f="reps"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${s.reps}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><button class="serie-ok" aria-label="Serie ${j+1}">${ico('check')}</button></div>`).join('');
+  const e=S.ses.ex[i], c=$(`.series[data-i="${i}"]`); const sec=e.seg||e.n==='Plancha';
+  c.innerHTML=`<div class="serie"><span></span><span class="serie-head">kg</span><span class="serie-head">${sec?'Seg':'Reps'}</span><span></span></div>`+e.sets.map((s,j)=>`<div class="serie ${s.done?'hecha':''}" data-j="${j}"><span class="serie-n">${j+1}</span><div class="step" data-f="kg"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${e.kgSug||s.kg?fmt(s.kg):'—'}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><div class="step" data-f="reps"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${s.reps}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><button class="serie-ok" aria-label="Serie ${j+1}">${ico('check')}</button></div>`).join('');
 }
 /* − y + : un toque cambia de a uno; mantener apretado repite */
 $('#pager').addEventListener('pointerdown',e=>{
   const st=e.target.closest('.step button'); if(!st)return;
   const pg=st.closest('.pg'), row=st.closest('.serie'), i=+pg.dataset.i, j=+row.dataset.j, f=st.parentNode.dataset.f, d=st.dataset.d==='+'?1:-1;
-  const apply=()=>{const s=S.ses.ex[i].sets[j]; if(f==='kg')s.kg=Math.max(0,+(s.kg+d*2.5).toFixed(1)); else s.reps=Math.max(0,s.reps+d); vibra(5); pintaSeries(i)};
+  const apply=()=>{const s=S.ses.ex[i].sets[j]; if(f==='kg')s.kg=Math.max(0,+(s.kg+d*2.5).toFixed(1)); else s.reps=Math.max(0,s.reps+d); vibra(5); pintaSeries(i); guardaSesLocal()};
   apply(); let rep=null; const t=setTimeout(()=>{rep=setInterval(apply,110)},420);
   stopRep=()=>{clearTimeout(t);clearInterval(rep);stopRep=null};
 });
@@ -1372,13 +1517,20 @@ $('#pager').addEventListener('click',e=>{
   const a=e.target.closest('[data-a]');
   if(a){
     const act=a.dataset.a;
-    if(act==='video'){ videoSheet(ex.n); }
-    else if(act==='repetir'){ const ls=lastSets(ex); ex.sets.forEach((s,j)=>{if(!s.done){const l=ls[Math.min(j,ls.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); vibra(10); snack('Cargué lo de la última vez'); }
+    if(act==='video'){ verVideo(ex); }
+    else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
-      const alts=ALT[ex.pat]||[]; const ops=act==='reg'?alts.filter(x=>/simple|guiado|sin equipo/.test(x[1])):alts.filter(x=>/técnico|carga/.test(x[1]));
-      const lista=(ops.length?ops:alts).slice(0,2);
+      let lista;
+      if(REAL)lista=[[act==='reg'?ex.reg:ex.prog,act==='reg'?'más simple':'más exigente']].filter(x=>x[0]);
+      else{ const alts=ALT[ex.pat]||[]; const ops=act==='reg'?alts.filter(x=>/simple|guiado|sin equipo/.test(x[1])):alts.filter(x=>/técnico|carga/.test(x[1])); lista=(ops.length?ops:alts).slice(0,2); }
+      /* Cambia el ejercicio y trae su técnica y su video del catálogo, si están cargados */
+      const poner=(nombre)=>{
+        const c=S.cat[nombre]||{n:nombre,pat:ex.pat,video:'',como:[],err:'',mus:[],por:'',reg:'',prog:''};
+        Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog});
+        pg.querySelector('.ej-nombre').textContent=ex.n; pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex); guardaSesLocal();
+      };
       sheet(`<div class="sheet-col"><div><h3>${act==='reg'?'Regresión':'Progresión'}</h3><p class="sub">Cambiá ${ex.n} por el eslabón vecino del mismo patrón.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op" data-n="${x[0]}"><span>${x[0]}</span><small>${x[1]}</small></button>`).join('')}</div></div>`,()=>{
-        $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{const ant=ex.n;ex.n=b.dataset.n;pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+`<div class="ej-acciones"><button class="video" data-a="video">${ico('play')}Video</button><button data-a="reg">${ico('down')}Regresión</button><button data-a="prog">${ico('up')}Progresión</button></div>`;cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{ex.n=ant;pg.querySelector('.ej-nombre').textContent=ant;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+`<div class="ej-acciones"><button class="video" data-a="video">${ico('play')}Video</button><button data-a="reg">${ico('down')}Regresión</button><button data-a="prog">${ico('up')}Progresión</button></div>`})});
+        $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{const ant={...ex};poner(b.dataset.n);cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{Object.assign(ex,ant);pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex);guardaSesLocal()})});
       });
     }
     return;
@@ -1388,11 +1540,12 @@ $('#pager').addEventListener('click',e=>{
     s.done=!s.done; vibra(s.done?[12,30,12]:6);
     if(s.done){
       const sig=ex.sets[j+1]; if(sig&&!sig.done){sig.kg=s.kg;sig.reps=s.reps}   // la próxima serie arranca con lo que acabás de hacer
-      const mejor=Math.max(...lastSets(ex).map(x=>x.kg));
+      const mejor=mejorKg(ex);
       if(s.kg>mejor&&mejor>0&&!ex.pr){ex.pr=true;S.ses.prs++;setTimeout(()=>{snack('Nueva marca en '+ex.n+': '+fmt(s.kg)+' kg');vibra([20,50,20,50,80])},200)}
       pintaSeries(i); descanso(ex,j); actualizaTop();
       if(ex.sets.every(x=>x.done)&&S.ses.idx<S.ses.ex.length-1)setTimeout(()=>{if(!ex.pr)snack('Ejercicio completo. Deslizá para seguir')},300);
     } else { pintaSeries(i); actualizaTop(); }
+    guardaSesLocal();
   }
 });
 /* Celular y iPad vertical: se desliza entre ejercicios. iPad horizontal: se ve uno solo y se salta tocando la lista. */
@@ -1410,6 +1563,7 @@ function actualizaTop(){
   $('#ses-prev').disabled=ses.idx===0;
   $$('#pager .pg').forEach((p,k)=>p.classList.toggle('act',k===ses.idx));
   $('#ses-lista').innerHTML=`<div class="card-label">Tu sesión</div>`+ses.ex.map((e,i)=>{const h=e.sets.filter(s=>s.done).length,ok=h===e.sets.length;return `<button class="sust-op ${i===ses.idx?'act':''}" data-i="${i}"><span>${ok?ico('check'):`<b class="num">${i+1}</b>`}${e.n}</span><small>${h}/${e.sets.length}</small></button>`}).join('');
+  if(!ses.fin)guardaSesLocal();   // así, al retomar, vuelve al mismo ejercicio
 }
 function irA(i){
   if(dos()){ S.ses.idx=i; actualizaTop(); vibra(6) }
@@ -1425,7 +1579,11 @@ $('#ses-n').onclick=()=>{
     $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{cerrar();irA(+b.dataset.i)});
   });
 };
-$('#ses-salir').onclick=()=>sheet(`<div class="sheet-col"><div><h3>¿Salir de la sesión?</h3><p class="sub">Lo que registraste hasta ahora se guarda.</p></div><button class="btn" id="sal-seg">Seguir entrenando</button><button class="btn sec chico" id="sal-fin">Salir</button></div>`,()=>{$('#sal-seg').onclick=cerrar;$('#sal-fin').onclick=()=>{cerrar();pararDescanso();clearInterval(clk);wake(false);show('app','i')}});
+$('#ses-salir').onclick=()=>sheet(`<div class="sheet-col"><div><h3>¿Salir de la sesión?</h3><p class="sub">Lo que registraste hasta ahora se guarda.</p></div><button class="btn" id="sal-seg">Seguir entrenando</button><button class="btn sec chico" id="sal-fin">Salir</button></div>`,()=>{$('#sal-seg').onclick=cerrar;$('#sal-fin').onclick=()=>{
+  cerrar();pararDescanso();clearInterval(clk);wake(false);
+  if(REAL){S.ses.fin=Date.now();encolar(S.ses,true)}
+  renderApp();show('app','i');
+}});
 /* Descanso con cuenta regresiva real + cuánto te sobró (RIR) */
 let dEnd=0,dTot=0;
 function descanso(ex,j){
@@ -1438,8 +1596,8 @@ function descanso(ex,j){
   $$('#rpe button[data-p]').forEach(b=>b.classList.toggle('sel',+b.dataset.p===ex.sets[j].rpe));
   $('#descanso').classList.add('on'); clearInterval(tick); tick=setInterval(pintaDesc,250); pintaDesc();
 }
-$('#rir').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rir=+b.dataset.r;$$('#rir button[data-r]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8)});
-$('#rpe').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rpe=+b.dataset.p;$$('#rpe button[data-p]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8)});
+$('#rir').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rir=+b.dataset.r;$$('#rir button[data-r]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
+$('#rpe').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rpe=+b.dataset.p;$$('#rpe button[data-p]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 function pintaDesc(){
   const r=Math.max(0,dEnd-Date.now()); const s=Math.ceil(r/1000);
   $('#desc-t').textContent=mmss(s); $('#desc-prog').style.width=(100-r/dTot*100)+'%';
@@ -1452,21 +1610,22 @@ $('#desc-mas').onclick=()=>{dEnd+=15000;dTot+=15000;vibra(6)};
 /* Cierre */
 function contar(el,hasta,fmtf){const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/900);el.textContent=fmtf(hasta*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(f)})(t0)}
 function terminar(){
-  pararDescanso(); clearInterval(clk); wake(false); const ses=S.ses;
-  const series=ses.ex.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0), seg=Math.max(1,Math.round((Date.now()-ses.t0)/1000));
-  show('cierre','f'); $('#cierre-sub').textContent=`Sesión ${ses.L} · miércoles`;
+  pararDescanso(); clearInterval(clk); wake(false); const ses=S.ses; ses.fin=Date.now(); guardaSesLocal();
+  const series=ses.ex.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0), seg=Math.max(1,Math.round((ses.fin-ses.t0)/1000));
+  show('cierre','f'); $('#cierre-sub').textContent=`Sesión ${ses.L} · ${DIAS_N[HOY].toLowerCase()}`;
   contar($('#st-ser'),series,v=>Math.round(v));
   contar($('#st-dur'),seg,v=>{v=Math.round(v);return Math.floor(v/60)+':'+String(v%60).padStart(2,'0')});
-  $('#st-sem').textContent=(S.days.filter(d=>d<HOY).length+1)+'/'+S.days.length;
+  $('#st-sem').textContent=new Set([...diasHechos(),HOY]).size+'/'+S.days.length;
   /* Doble progresión: tope del rango en todas las series; "con margen" = RIR 2 o más si se registró RIR */
   const p=ses.ex[0], tope=p.sets.length&&p.sets.every(s=>s.done&&s.reps>=p.r[1]&&(s.rir==null||s.rir>=2));
+  const maxP=Math.max(0,...p.sets.filter(s=>s.done).map(s=>s.kg));
   $('#cierre-rpe').hidden=!hayRpeSesion(); ses.rpeSes=null;
   $('#rpe-ses').innerHTML=[6,7,8,9,10].map(n=>`<button data-v="${n}"><b>${n}</b><small>${RPE_PAL[n]}</small></button>`).join('');
-  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango${hayRirSerie()?' con margen':''}: la próxima sesión te sugerimos <b>${fmt(p.kg+2.5)} kg</b>.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps con margen en todas y te sugerimos subir la carga.</span>`;
+  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango${hayRirSerie()?' con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps con margen en todas y te sugerimos subir la carga.</span>`;
   vibra([30,60,30,60,80]);
 }
-$('#btn-listo').onclick=()=>{renderApp();show('app','f')};
-$('#rpe-ses').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!S.ses)return;S.ses.rpeSes=+b.dataset.v;$$('#rpe-ses button').forEach(x=>x.classList.toggle('sel',x===b));vibra(8)});
+$('#btn-listo').onclick=()=>{if(REAL&&S.ses)encolar(S.ses,true);renderApp();show('app','f')};
+$('#rpe-ses').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!S.ses)return;S.ses.rpeSes=+b.dataset.v;$$('#rpe-ses button').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 
 /* ───────── Saltos de la demo (panel lateral en escritorio; Más y la landing en iPad y celular) ───────── */
 function saltar(s){
@@ -1494,7 +1653,152 @@ function relayout(){
 }
 ['resize','orientationchange'].forEach(ev=>addEventListener(ev,()=>{cancelAnimationFrame(rzF);rzF=requestAnimationFrame(()=>requestAnimationFrame(relayout))}));
 
-renderApp();
+/* ───────── Datos reales: proxy de Apps Script + planilla de Luca ─────────
+   La app guarda todo primero en el dispositivo (pv-cache, pv-ses, pv-pend) y lo sube cuando hay conexión. */
+async function api(accion,datos={}){
+  // Sin encabezados: el navegador lo manda como texto plano y Apps Script lo acepta sin pedido previo (CORS)
+  const r=await fetch(CONFIG.proxy,{method:'POST',body:JSON.stringify({accion,token:ls.get('pv-token'),...datos})});
+  const j=await r.json();
+  if(!j.ok){const e=new Error(j.mensaje||j.error);e.code=j.error;throw e}
+  return j;
+}
+const MSJ={
+  no_alumno:e=>`Tu cuenta (${e.message}) no está en la lista de alumnos. Pedile a Luca que te agregue.`,
+  inactivo:()=>'Tu suscripción no está activa. Hablá con Luca para renovarla.',
+  auth:()=>'Tu sesión venció o no se pudo verificar. Entrá de nuevo con Google.',
+  config:e=>'La planilla de Luca no está lista: '+e.message
+};
+const mensajeError=e=>(MSJ[e.code]||(()=>'No hay conexión con el registro de Luca. Probá de nuevo en un rato.'))(e);
+
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),sesiones:S.sesiones,historial:S.hist}) }
+function aplicarDatos(d){
+  S.alumno=d.alumno; S.planCrudo=d.plan||[];
+  S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
+  S.plan={}; S.letras=[];
+  S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
+  const dias=[...new Set((d.alumno.dias||'').split(',').map(x=>LET.indexOf(x.trim().toUpperCase())).filter(i=>i>=0))].sort((a,b)=>a-b);
+  S.days=dias.length&&(dias.length===S.letras.length||!S.letras.length)?dias:(DIAS_DEF[S.letras.length]||[0,2,4]);
+  S.sesiones=d.sesiones||[]; S.hist=d.historial||[];
+  pendientes().forEach(sumarLocal);   // lo que todavía no llegó a la planilla también cuenta
+  if(['nada','rir','rpe','ambos'].includes(d.alumno.esfuerzo)){S.pref.esfuerzo=d.alumno.esfuerzo;S.pref.avisoVisto=true}
+  if(ls.get('pv-aviso'))S.pref.avisoVisto=true;
+  $('#plan-tit').textContent='Tu plan · '+S.days.length+' días';
+  guardaCache();
+}
+
+/* Cola de sesiones por subir. Cada una lleva el email, por si en el dispositivo entra otra persona. */
+const pendientes=()=>ls.get('pv-pend',[]).filter(p=>S.alumno&&p.para===S.alumno.email);
+function sumarLocal(p){
+  if(S.sesiones.some(x=>x.id===p.sesion.id))return;
+  S.sesiones.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,dur:p.sesion.duracion_min,series:p.series.length,rpe:p.sesion.rpe_sesion});
+  p.series.forEach(x=>S.hist.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,ej:x.ej,serie:x.serie,kg:x.kg,reps:x.reps,rir:x.rir,rpe:x.rpe}));
+}
+function encolar(ses,avisar){
+  ls.del('pv-ses');
+  const series=[]; ses.ex.forEach(e=>e.sets.forEach((s,j)=>{if(s.done)series.push({ej:e.n,serie:j+1,kg:s.kg,reps:s.reps,rir:s.rir,rpe:s.rpe})}));
+  if(!series.length)return;   // no se registró ninguna serie: no hay nada que guardar
+  const ci=ses.ci||{};
+  const p={para:S.alumno.email,series,sesion:{id:ses.id,fecha:ses.fecha,sesion:ses.L,duracion_min:Math.max(1,Math.round(((ses.fin||Date.now())-ses.t0)/60000)),reducida:!!ses.reducida,rpe_sesion:ses.rpeSes,sueno:ci.sueno,estres:ci.estres,energia:ci.energia}};
+  const todas=ls.get('pv-pend',[]); if(!todas.some(x=>x.sesion.id===p.sesion.id))todas.push(p); ls.set('pv-pend',todas);
+  sumarLocal(p); guardaCache(); sincronizar(avisar);
+}
+let sincronizando=false;
+async function sincronizar(avisar){
+  if(!REAL||sincronizando||!S.alumno)return;
+  if(!pendientes().length){renderMas();return}
+  sincronizando=true; let subidas=0;
+  try{
+    for(let p;(p=pendientes()[0]);){
+      await api('guardarSesion',{sesion:p.sesion,series:p.series});
+      ls.set('pv-pend',ls.get('pv-pend',[]).filter(x=>x.sesion.id!==p.sesion.id)); subidas++;
+    }
+    if(avisar&&subidas)snack(subidas>1?`${subidas} sesiones guardadas en tu registro`:'Sesión guardada en tu registro');
+  }catch(e){
+    if(e.code==='auth'||e.code==='no_alumno'||e.code==='inactivo')salirCuenta(mensajeError(e));
+    else if(avisar)snack('Sin conexión: la sesión quedó guardada en el dispositivo y se sube sola después');
+  }finally{ sincronizando=false; renderMas(); }
+}
+addEventListener('online',()=>sincronizar(true));
+
+/* Datos frescos de la planilla. Si no hay conexión, la app sigue con lo guardado en el dispositivo. */
+async function refrescar(){
+  try{
+    const r=await api('datos'); aplicarDatos(r);
+    const enUso=$('#sesion').classList.contains('on')||$('#cierre').classList.contains('on');
+    if($('#landing').classList.contains('on'))entrarApp();
+    else if(!enUso){renderApp();if(S.tab==='progreso')renderProgreso()}
+    sincronizar();
+  }catch(e){
+    if(['auth','no_alumno','inactivo','config'].includes(e.code))salirCuenta(mensajeError(e));
+    else if($('#landing').classList.contains('on'))$('#login-msg').textContent=mensajeError(e);
+  }
+}
+function entrarApp(){ renderApp(); show('app','f'); setTab('inicio'); revisarSesionPendiente(); }
+
+/* Entrar con Google: el botón lo dibuja Google y devuelve un ID token que el proxy verifica */
+function cargarGoogle(){
+  return new Promise((ok,mal)=>{
+    if(window.google&&google.accounts&&google.accounts.id)return ok();
+    const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=ok; s.onerror=mal; document.head.appendChild(s);
+  });
+}
+async function prepararLogin(){
+  $('#btn-login').hidden=true; const box=$('#g-login'); box.hidden=false; box.innerHTML='';
+  try{ await cargarGoogle() }catch(e){ $('#login-msg').textContent='No se pudo cargar el inicio de sesión de Google. Revisá la conexión y volvé a abrir la app.'; return }
+  google.accounts.id.initialize({client_id:CONFIG.clientId,callback:r=>entrar(r.credential)});
+  google.accounts.id.renderButton(box,{theme:'outline',size:'large',shape:'pill',text:'continue_with',locale:'es',width:Math.max(220,Math.min(400,box.clientWidth||320))});
+}
+async function entrar(idToken){
+  $('#login-msg').textContent='Entrando…';
+  try{
+    const r=await api('login',{idToken}); ls.set('pv-token',r.token);
+    aplicarDatos(r); $('#login-msg').textContent=''; entrarApp(); sincronizar(true);
+  }catch(e){ $('#login-msg').textContent=mensajeError(e) }
+}
+function salirCuenta(msg){
+  ls.del('pv-token'); ls.del('pv-cache'); S.alumno=null;
+  cerrar(); show('landing'); prepararLogin(); if(msg)$('#login-msg').textContent=msg;
+}
+function cerrarSesion(){
+  const n=pendientes().length;
+  sheet(`<div class="sheet-col"><div><h3>¿Cerrar sesión?</h3><p class="sub">${n?`Tenés ${n} sesión${n>1?'es':''} sin subir a tu registro. Quedan en este dispositivo y se suben la próxima vez que entres.`:'Tu registro queda guardado en la planilla de Luca.'}</p></div><button class="btn" id="cs-ok">Cerrar sesión</button><button class="btn sec chico" onclick="cerrar()">Cancelar</button></div>`,()=>{
+    $('#cs-ok').onclick=()=>{try{google.accounts.id.disableAutoSelect()}catch(e){} salirCuenta('')};
+  });
+}
+
+/* Sesión que quedó a medias (se cerró la app, se apagó el dispositivo): se ofrece retomarla */
+function revisarSesionPendiente(){
+  const p=ls.get('pv-ses'); if(!p||!p.ses)return;
+  if(!S.alumno||p.para!==S.alumno.email)return;
+  const ses=p.ses, hechas=ses.ex.reduce((a,e)=>a+e.sets.filter(s=>s.done).length,0);
+  if(ses.fin||Date.now()-ses.t0>12*36e5){ if(hechas)encolar(ses,true); else ls.del('pv-ses'); return }
+  sheet(`<div class="sheet-col"><div><h3>Tenés una sesión sin terminar</h3><p class="sub">Sesión ${ses.L} · ${hechas} serie${hechas===1?'':'s'} registrada${hechas===1?'':'s'}.</p></div>
+   <button class="btn" id="rs-ret">Retomar</button><button class="btn sec chico" id="rs-gua">Guardar lo hecho y cerrarla</button><button class="btn sec chico" id="rs-des">Descartarla</button></div>`,()=>{
+    $('#rs-ret').onclick=()=>{cerrar();retomar(ses)};
+    $('#rs-gua').onclick=()=>{cerrar();ses.fin=Date.now();encolar(ses,true);renderApp()};
+    $('#rs-des').onclick=()=>{cerrar();ls.del('pv-ses');snack('Sesión descartada')};
+  });
+}
+function retomar(ses){
+  S.ses=ses; const idx=ses.idx;
+  renderSesion(); show('sesion','d'); pintaEsfuerzo(); arrancarReloj(); wake(true);
+  S.ses.idx=idx;
+  if(dos())actualizaTop();
+  else requestAnimationFrame(()=>{ancladoHasta=Date.now()+300;$('#pager').scrollLeft=idx*$('#pager').clientWidth;actualizaTop()});
+}
+
+function arrancarReal(){
+  $$('.solo-demo').forEach(x=>x.hidden=true);
+  $('#legal').textContent='Tu registro se guarda en la planilla de Luca: solo vos y Luca lo ven.';
+  $('.land-item span:last-child').textContent='Tu plan, armado por Luca para vos';   // con alumnos no hay entrevista: el plan lo carga Luca
+  $('#btn-demo').textContent='Ver la demo'; $('#btn-demo').onclick=()=>{location.href='?demo'};
+  const cache=ls.get('pv-cache');
+  if(ls.get('pv-token')&&cache){ aplicarDatos(cache); entrarApp(); refrescar() }   // abre al instante, aunque no haya señal
+  else if(ls.get('pv-token')){ $('#btn-login').hidden=true; $('#login-msg').textContent='Cargando tu plan…'; refrescar() }
+  else prepararLogin();
+}
+
+if(REAL)arrancarReal(); else renderApp();
 </script>
 </body>
 </html>
