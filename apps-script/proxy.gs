@@ -7,7 +7,7 @@
  */
 
 // ID de cliente OAuth de Google Cloud (el mismo que va en index.html). No es secreto.
-const CLIENT_ID = 'PEGAR_ACA.apps.googleusercontent.com';
+const CLIENT_ID = '290132927246-93jukcuetk56v3eva7e4upjlbck096sf.apps.googleusercontent.com';
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
 
@@ -18,6 +18,80 @@ const HOJAS = {
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
   Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe']
 };
+
+/* ───────── Puesta en marcha ─────────
+   configurar es la primera función del archivo para que el botón "Ejecutar" del editor la elija sola. */
+
+// Crea las hojas que falten (y columnas nuevas al final), sin borrar nada. Se puede correr más de una vez.
+function configurar() {
+  const lib = SpreadsheetApp.getActive();
+  if (!lib) throw new Error('Este script tiene que estar dentro de la planilla: abrí "Profe Virtual — Datos" y entrá por Extensiones → Apps Script.');
+  PropertiesService.getScriptProperties().setProperty('PLANILLA_ID', lib.getId());
+  secreto();
+
+  Object.keys(HOJAS).forEach(n => {
+    let h = lib.getSheetByName(n);
+    if (!h) h = lib.insertSheet(n);
+    const cab = HOJAS[n];
+    if (h.getLastRow() === 0) {
+      h.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold');
+      h.setFrozenRows(1);
+    } else {
+      const actual = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
+      cab.filter(c => actual.indexOf(c) < 0).forEach(c => h.getRange(1, h.getLastColumn() + 1).setValue(c).setFontWeight('bold'));
+    }
+  });
+  // Las fechas que escribe la app quedan como texto (aaaa-mm-dd): así no cambian con la zona horaria.
+  ['Sesiones', 'Registro'].forEach(n => lib.getSheetByName(n).getRange('B:B').setNumberFormat('@'));
+
+  // Ejemplo para probar: vos como primer alumno, con un plan y un catálogo de muestra.
+  const yo = Session.getEffectiveUser().getEmail();
+  const alumnos = lib.getSheetByName('Alumnos');
+  if (alumnos.getLastRow() === 1 && yo) {
+    alumnos.appendRow([yo, 'Luca', 'activo', 'L,X,V', '', new Date(), '', '', '', 'Cuenta de prueba']);
+  }
+  const planes = lib.getSheetByName('Planes');
+  if (planes.getLastRow() === 1 && yo) {
+    const p = [
+      ['A', 'Sentadilla y tracción', 1, 'Sentadilla goblet', 4, 6, 8, 'reps', 150, 20, '', ''],
+      ['A', '', 2, 'Remo con mancuerna', 3, 8, 10, 'reps', 120, 22.5, '', ''],
+      ['A', '', 3, 'Face pull', 3, 10, 12, 'reps', 90, 15, '', ''],
+      ['B', 'Empuje y bisagra', 1, 'Peso muerto rumano', 3, 6, 8, 'reps', 150, 60, '', ''],
+      ['B', '', 2, 'Press inclinado con mancuernas', 3, 8, 10, 'reps', 120, 22, '', ''],
+      ['B', '', 3, 'Plancha', 3, 30, 30, 'seg', 60, 0, '', 'Respirá normal durante toda la serie.'],
+      ['C', 'Unilateral y core', 1, 'Hip thrust', 3, 8, 10, 'reps', 120, 50, '', ''],
+      ['C', '', 2, 'Zancada búlgara', 3, 8, 8, 'reps', 120, 12, '', ''],
+      ['C', '', 3, 'Dead bug', 3, 10, 10, 'reps', 60, 0, '', '']
+    ].map(r => [yo].concat(r));
+    planes.getRange(2, 1, p.length, p[0].length).setValues(p);
+  }
+  const ejercicios = lib.getSheetByName('Ejercicios');
+  if (ejercicios.getLastRow() === 1) {
+    const e = [
+      ['Sentadilla goblet', 'Sentadilla', '', 'Mancuerna pegada al pecho, pies al ancho de hombros.', 'Bajá entre las rodillas, con el pecho alto.', 'Subí empujando todo el pie contra el piso.', 'Que las rodillas se vayan hacia adentro.', 'Cuádriceps, Glúteos, Core', '', 'Sentadilla a cajón', 'Sentadilla frontal'],
+      ['Remo con mancuerna', 'Tracción horizontal', '', 'Una mano y una rodilla en el banco, espalda plana.', 'Llevá el codo hacia la cadera, no hacia el techo.', 'Bajá lento hasta estirar del todo el brazo.', 'Girar el torso para ayudarse a subir.', 'Dorsal, Romboides, Bíceps', '', 'Remo en polea', 'Remo con barra'],
+      ['Face pull', 'Hombro', '', 'Polea a la altura de la cara, agarre con cuerda.', 'Tirá hacia la frente abriendo los codos.', 'Frená un instante y volvé con control.', 'Usar demasiado peso y tirar con el cuerpo.', 'Deltoides posterior, Manguito rotador', '', '', ''],
+      ['Peso muerto rumano', 'Bisagra de cadera', '', 'Pies al ancho de cadera, barra pegada a las piernas.', 'Llevá la cadera hacia atrás, con rodillas apenas flexionadas y espalda neutra.', 'Bajá hasta sentir estirar atrás del muslo y volvé empujando el piso.', 'Redondear la espalda baja o separar la barra del cuerpo.', 'Isquios, Glúteos, Espalda baja', 'Fortalece toda la cadena posterior, que es la que protege la zona lumbar.', 'Peso muerto con mancuernas', 'Buenos días con barra'],
+      ['Press inclinado con mancuernas', 'Empuje horizontal', '', 'Banco a 30°, omóplatos juntos y pies firmes.', 'Bajá las mancuernas a la altura del pecho, con codos a unos 45°.', 'Empujá arriba y un poco hacia adentro.', 'Abrir demasiado los codos y cargar el hombro.', 'Pecho superior, Hombro, Tríceps', '', 'Press en máquina', 'Press de banca con barra'],
+      ['Plancha', 'Core', '', 'Codos bajo los hombros, cuerpo en línea recta.', 'Apretá glúteos y abdomen, sin hundir la cadera.', 'Respirá normal y mantené la posición.', 'Dejar caer la cadera o subirla de más.', 'Abdomen, Glúteos, Hombros', '', 'Dead bug', 'Rueda abdominal'],
+      ['Hip thrust', 'Bisagra de cadera', '', 'Espalda alta apoyada en el banco, pies al ancho de cadera.', 'Subí la cadera hasta alinear rodillas, cadera y hombros.', 'Apretá los glúteos arriba un segundo y bajá lento.', 'Arquear la zona lumbar al llegar arriba.', 'Glúteos, Isquios', '', '', ''],
+      ['Zancada búlgara', 'Unilateral', '', 'Pie de atrás apoyado en el banco, pie de adelante a un paso largo.', 'Bajá en vertical, con el torso levemente inclinado.', 'Empujá con el talón de adelante para subir.', 'Apoyar el peso en la pierna de atrás.', 'Cuádriceps, Glúteos', '', 'Step-up', ''],
+      ['Dead bug', 'Core', '', 'Boca arriba, brazos al techo y rodillas a 90°.', 'Estirá brazo y pierna contrarios sin despegar la espalda baja del piso.', 'Volvé y cambiá de lado con calma.', 'Arquear la espalda al estirar la pierna.', 'Abdomen profundo', '', '', 'Plancha']
+    ];
+    ejercicios.getRange(2, 1, e.length, e[0].length).setValues(e);
+  }
+
+  // La hoja vacía que trae toda planilla nueva ya no hace falta.
+  lib.getSheets().forEach(h => {
+    if (!HOJAS[h.getName()] && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
+  });
+  Logger.log('Listo. Hojas: ' + Object.keys(HOJAS).join(', ') + '. Alumno de prueba: ' + yo);
+}
+
+// Menú "Profe Virtual" en la planilla (corre solo al abrirla, no desde el editor).
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Profe Virtual').addItem('Configurar / reparar hojas', 'configurar').addToUi();
+}
 
 /* ───────── Entrada ───────── */
 function doPost(e) {
@@ -221,72 +295,3 @@ function fecha(v) {
   return txt(v);
 }
 
-/* ───────── Puesta en marcha ───────── */
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Profe Virtual').addItem('Configurar / reparar hojas', 'configurar').addToUi();
-}
-
-// Crea las hojas que falten (y columnas nuevas al final), sin borrar nada. Se puede correr más de una vez.
-function configurar() {
-  const lib = SpreadsheetApp.getActive();
-  PropertiesService.getScriptProperties().setProperty('PLANILLA_ID', lib.getId());
-  secreto();
-
-  Object.keys(HOJAS).forEach(n => {
-    let h = lib.getSheetByName(n);
-    if (!h) h = lib.insertSheet(n);
-    const cab = HOJAS[n];
-    if (h.getLastRow() === 0) {
-      h.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold');
-      h.setFrozenRows(1);
-    } else {
-      const actual = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(String);
-      cab.filter(c => actual.indexOf(c) < 0).forEach(c => h.getRange(1, h.getLastColumn() + 1).setValue(c).setFontWeight('bold'));
-    }
-  });
-  // Las fechas que escribe la app quedan como texto (aaaa-mm-dd): así no cambian con la zona horaria.
-  ['Sesiones', 'Registro'].forEach(n => lib.getSheetByName(n).getRange('B:B').setNumberFormat('@'));
-
-  // Ejemplo para probar: vos como primer alumno, con un plan y un catálogo de muestra.
-  const yo = Session.getEffectiveUser().getEmail();
-  const alumnos = lib.getSheetByName('Alumnos');
-  if (alumnos.getLastRow() === 1 && yo) {
-    alumnos.appendRow([yo, 'Luca', 'activo', 'L,X,V', '', new Date(), '', '', '', 'Cuenta de prueba']);
-  }
-  const planes = lib.getSheetByName('Planes');
-  if (planes.getLastRow() === 1 && yo) {
-    const p = [
-      ['A', 'Sentadilla y tracción', 1, 'Sentadilla goblet', 4, 6, 8, 'reps', 150, 20, '', ''],
-      ['A', '', 2, 'Remo con mancuerna', 3, 8, 10, 'reps', 120, 22.5, '', ''],
-      ['A', '', 3, 'Face pull', 3, 10, 12, 'reps', 90, 15, '', ''],
-      ['B', 'Empuje y bisagra', 1, 'Peso muerto rumano', 3, 6, 8, 'reps', 150, 60, '', ''],
-      ['B', '', 2, 'Press inclinado con mancuernas', 3, 8, 10, 'reps', 120, 22, '', ''],
-      ['B', '', 3, 'Plancha', 3, 30, 30, 'seg', 60, 0, '', 'Respirá normal durante toda la serie.'],
-      ['C', 'Unilateral y core', 1, 'Hip thrust', 3, 8, 10, 'reps', 120, 50, '', ''],
-      ['C', '', 2, 'Zancada búlgara', 3, 8, 8, 'reps', 120, 12, '', ''],
-      ['C', '', 3, 'Dead bug', 3, 10, 10, 'reps', 60, 0, '', '']
-    ].map(r => [yo].concat(r));
-    planes.getRange(2, 1, p.length, p[0].length).setValues(p);
-  }
-  const ejercicios = lib.getSheetByName('Ejercicios');
-  if (ejercicios.getLastRow() === 1) {
-    const e = [
-      ['Sentadilla goblet', 'Sentadilla', '', 'Mancuerna pegada al pecho, pies al ancho de hombros.', 'Bajá entre las rodillas, con el pecho alto.', 'Subí empujando todo el pie contra el piso.', 'Que las rodillas se vayan hacia adentro.', 'Cuádriceps, Glúteos, Core', '', 'Sentadilla a cajón', 'Sentadilla frontal'],
-      ['Remo con mancuerna', 'Tracción horizontal', '', 'Una mano y una rodilla en el banco, espalda plana.', 'Llevá el codo hacia la cadera, no hacia el techo.', 'Bajá lento hasta estirar del todo el brazo.', 'Girar el torso para ayudarse a subir.', 'Dorsal, Romboides, Bíceps', '', 'Remo en polea', 'Remo con barra'],
-      ['Face pull', 'Hombro', '', 'Polea a la altura de la cara, agarre con cuerda.', 'Tirá hacia la frente abriendo los codos.', 'Frená un instante y volvé con control.', 'Usar demasiado peso y tirar con el cuerpo.', 'Deltoides posterior, Manguito rotador', '', '', ''],
-      ['Peso muerto rumano', 'Bisagra de cadera', '', 'Pies al ancho de cadera, barra pegada a las piernas.', 'Llevá la cadera hacia atrás, con rodillas apenas flexionadas y espalda neutra.', 'Bajá hasta sentir estirar atrás del muslo y volvé empujando el piso.', 'Redondear la espalda baja o separar la barra del cuerpo.', 'Isquios, Glúteos, Espalda baja', 'Fortalece toda la cadena posterior, que es la que protege la zona lumbar.', 'Peso muerto con mancuernas', 'Buenos días con barra'],
-      ['Press inclinado con mancuernas', 'Empuje horizontal', '', 'Banco a 30°, omóplatos juntos y pies firmes.', 'Bajá las mancuernas a la altura del pecho, con codos a unos 45°.', 'Empujá arriba y un poco hacia adentro.', 'Abrir demasiado los codos y cargar el hombro.', 'Pecho superior, Hombro, Tríceps', '', 'Press en máquina', 'Press de banca con barra'],
-      ['Plancha', 'Core', '', 'Codos bajo los hombros, cuerpo en línea recta.', 'Apretá glúteos y abdomen, sin hundir la cadera.', 'Respirá normal y mantené la posición.', 'Dejar caer la cadera o subirla de más.', 'Abdomen, Glúteos, Hombros', '', 'Dead bug', 'Rueda abdominal'],
-      ['Hip thrust', 'Bisagra de cadera', '', 'Espalda alta apoyada en el banco, pies al ancho de cadera.', 'Subí la cadera hasta alinear rodillas, cadera y hombros.', 'Apretá los glúteos arriba un segundo y bajá lento.', 'Arquear la zona lumbar al llegar arriba.', 'Glúteos, Isquios', '', '', ''],
-      ['Zancada búlgara', 'Unilateral', '', 'Pie de atrás apoyado en el banco, pie de adelante a un paso largo.', 'Bajá en vertical, con el torso levemente inclinado.', 'Empujá con el talón de adelante para subir.', 'Apoyar el peso en la pierna de atrás.', 'Cuádriceps, Glúteos', '', 'Step-up', ''],
-      ['Dead bug', 'Core', '', 'Boca arriba, brazos al techo y rodillas a 90°.', 'Estirá brazo y pierna contrarios sin despegar la espalda baja del piso.', 'Volvé y cambiá de lado con calma.', 'Arquear la espalda al estirar la pierna.', 'Abdomen profundo', '', '', 'Plancha']
-    ];
-    ejercicios.getRange(2, 1, e.length, e[0].length).setValues(e);
-  }
-
-  // La hoja vacía que trae toda planilla nueva ya no hace falta.
-  lib.getSheets().forEach(h => {
-    if (!HOJAS[h.getName()] && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
-  });
-  Logger.log('Listo. Hojas: ' + Object.keys(HOJAS).join(', ') + '. Alumno de prueba: ' + yo);
-}

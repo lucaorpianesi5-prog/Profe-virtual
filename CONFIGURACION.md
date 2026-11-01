@@ -22,9 +22,15 @@ App (GitHub Pages) ──► Proxy (Apps Script, corre con tu cuenta) ──► 
 1. En Google Drive, creá una planilla nueva y ponele **Profe Virtual — Datos**.
 2. Menú **Extensiones → Apps Script**. Se abre el editor.
 3. Borrá lo que haya en `Código.gs` y pegá todo el contenido de [`apps-script/proxy.gs`](apps-script/proxy.gs). Guardá (ícono de disquete).
-4. En la barra de arriba elegí la función **`configurar`** y tocá **Ejecutar**.
+4. En la barra de arriba, en el desplegable que está al lado de **Ejecutar**, fijate que diga **`configurar`** (es la primera función, así que debería aparecer sola). Tocá **Ejecutar**.
    - Google va a pedir permisos. Como el script es tuyo, va a aparecer "Google no verificó esta app": entrá en **Configuración avanzada → Ir a … (no seguro)** y aceptá. Es tu propio código, corriendo en tu cuenta.
-5. Volvé a la planilla: vas a ver las hojas **Alumnos, Planes, Ejercicios, Sesiones y Registro**, con vos como primer alumno y un plan de muestra para probar.
+   - Abajo se abre el **Registro de ejecución**. Tiene que terminar con `Listo. Hojas: Alumnos, Planes, …`. Si aparece un error en rojo, ese texto es el que hay que mirar.
+5. Volvé a la pestaña de la planilla (si no ves cambios, recargala): vas a ver las hojas **Alumnos, Planes, Ejercicios, Sesiones y Registro**, con vos como primer alumno y un plan de muestra para probar.
+
+Si no se crean las hojas:
+- **El desplegable decía otra función** (por ejemplo `doPost`): elegí `configurar` y ejecutá de nuevo.
+- **Creaste el script desde script.google.com** en vez de desde la planilla: tiene que estar *dentro* de la planilla. Abrí la planilla y entrá por **Extensiones → Apps Script**.
+- **No aceptaste los permisos**: ejecutá de nuevo y completá la autorización.
 
 `configurar` se puede volver a correr cuando quieras: agrega lo que falte y no borra nada. También queda en el menú **Profe Virtual** de la planilla.
 
@@ -34,10 +40,11 @@ App (GitHub Pages) ──► Proxy (Apps Script, corre con tu cuenta) ──► 
 2. Buscá **Google Auth Platform** (o *APIs y servicios → Pantalla de consentimiento de OAuth*) y completá:
    - Nombre de la app: **Profe Virtual**, y tu email de soporte.
    - Público: **Externo**.
-   - Publicá la app (**En producción**). Como solo pide nombre y email, Google no exige verificación.
-     Si en algún momento te la pide, dejala en **Prueba** y agregá los emails de tus alumnos como usuarios de prueba (hasta 100).
+   - Dejá la app en **Prueba** y agregá tu email y el de cada alumno en **Público → Usuarios de prueba → Agregar usuarios** (hasta 100). Solo esas cuentas pueden entrar con Google, además de tener que estar en la hoja Alumnos.
+     Los 7 días de vencimiento que menciona Google en modo Prueba no afectan: la app usa el login de Google una sola vez y después mantiene la sesión 60 días.
+   - **Más adelante (para vender a desconocidos):** publicar en **Público → Publicar app** exige página principal, política de privacidad y dominio autorizado en *Información de la marca*. Conviene hacerlo con dominio propio y la política revisada. No subas logo si no querés que Google pida verificar la marca.
 3. En **Clientes** (o *Credenciales*), **Crear cliente → Aplicación web**:
-   - Orígenes autorizados de JavaScript: `https://lucaorpianesi5-prog.github.io`
+   - Orígenes autorizados de JavaScript: `https://lucaorpianesi5-prog.github.io` (sin barra final ni `/Profe-virtual`)
    - No hace falta poner URIs de redireccionamiento.
 4. Copiá el **ID de cliente** (termina en `.apps.googleusercontent.com`).
 5. En el editor de Apps Script, pegalo en la primera línea de configuración y guardá:
