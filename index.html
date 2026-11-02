@@ -1338,9 +1338,9 @@ function tsUltima(e){
   const u=ultimaVez(e); if(!u)return 0;
   const s=S.sesiones.find(x=>x.id===u.sets[0].id); return s&&s.g?s.g:0;
 }
-/* Al subir la carga, las repeticiones bajan a la mitad de las últimas (sin bajar del mínimo del rango):
-   12 × 50 kg → 6 × 52,5 kg, y se vuelve a construir hasta el tope. Es la estructura del programa. */
-const repsAlSubir=(e,sets)=>Math.max(e.r[0],Math.ceil(Math.max(0,...sets.map(s=>s.reps||0))/2));
+/* Al subir la carga, las repeticiones bajan siempre a la mitad de las últimas, aunque quede debajo del rango:
+   12 × 50 kg → 6 × 52,5 kg; 8 → 4. Después se vuelve a construir hasta el tope. Es la estructura del programa. */
+const repsAlSubir=(e,sets)=>Math.max(1,Math.ceil(Math.max(0,...sets.map(s=>s.reps||0))/2));
 /* Lo que la app propone para hoy: { kg, reps, sube } */
 function sugerencia(e){
   const top=e.r[1];
