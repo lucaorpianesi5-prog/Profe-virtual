@@ -1321,7 +1321,7 @@ function sigCircuito(i,c){
 function renderMiPlan(){
   const sel=S.planDia, k=S.days.indexOf(sel), L=letraDia(k), pl=L&&S.plan[L], esHoy=sel===HOY, hechos=diasHechos();
   const hay=pl?pl.ej.reduce((a,e)=>a+e.s,0):0;
-  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${REAL?S.days.length+' días por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
+  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${REAL?S.days.length+(S.days.length>1?' días':' día')+' por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
   <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${hechos.has(i)?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${letraDia(kk)||'·'}</b></button>`}).join('')}</div>
   ${puedeArmar()?`<div class="ar-sesiones"><div class="card-label">Tus sesiones</div><div class="ar-chips">${S.letras.map(x=>`<button class="ar-chip" data-armar="${x}"><b>${x}</b><span>${esc(S.plan[x].meta)}</span>${ico('edit')}</button>`).join('')}<button class="ar-chip nueva" data-armar="">${ico('plus')}Armar sesión</button></div></div>`:''}</div>
   <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series</div></div>
@@ -1356,14 +1356,14 @@ function abrirCambio(L,i){
 }
 function abrirDias(){
   let sel=[...S.days];
-  sheet(`<div class="sheet-col"><div><h3>Cambiar días</h3><p class="sub">Elegí exactamente ${S.days.length} días. Un día de descanso entre sesiones rinde mejor.</p></div><div class="dias-grid" id="dg">${LET.map((l,i)=>`<button data-i="${i}" class="${sel.includes(i)?'sel':''}">${l}</button>`).join('')}</div><button class="btn" id="dg-ok">Guardar</button></div>`,()=>{
+  sheet(`<div class="sheet-col"><div><h3>Cambiar días</h3><p class="sub">Elegí los días que entrenás. Tus sesiones se reparten en orden (A, B, C…) y vuelven a empezar. Un día de descanso entre sesiones rinde mejor.</p></div><div class="dias-grid" id="dg">${LET.map((l,i)=>`<button data-i="${i}" class="${sel.includes(i)?'sel':''}">${l}</button>`).join('')}</div><button class="btn" id="dg-ok">Guardar</button></div>`,()=>{
     $$('#dg button').forEach(b=>b.onclick=()=>{
-      const i=+b.dataset.i; if(sel.includes(i))sel=sel.filter(x=>x!==i); else if(sel.length<S.days.length)sel.push(i); else {vibra([10,40,10]);return}
+      const i=+b.dataset.i; if(sel.includes(i))sel=sel.filter(x=>x!==i); else sel.push(i);
       b.classList.toggle('sel'); vibra(6);
     });
     $('#dg-ok').onclick=()=>{
-      if(sel.length!==S.days.length){snack(`Elegí ${S.days.length} días`);return}
-      S.days=sel.sort((a,b)=>a-b); cerrar(); renderApp(); snack('Días actualizados');
+      if(!sel.length){snack('Elegí al menos un día');return}
+      S.days=sel.sort((a,b)=>a-b); if(!S.days.includes(S.planDia))S.planDia=S.days[0]; cerrar(); renderApp(); snack(S.days.length+(S.days.length>1?' días':' día')+' por semana');
       if(REAL){const dias=S.days.map(i=>LET[i]).join(',');S.alumno.dias=dias;guardaCache();api('preferencias',{dias}).catch(()=>{})}
     };
   });
@@ -1968,8 +1968,8 @@ function aplicarDatos(d){
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
   const dias=[...new Set((d.alumno.dias||'').split(',').map(x=>LET.indexOf(x.trim().toUpperCase())).filter(i=>i>=0))].sort((a,b)=>a-b);
-  // Con menos sesiones que días (por ejemplo, mientras armás el plan), las sesiones se reparten en rotación
-  S.days=dias.length&&dias.length>=S.letras.length?dias:(DIAS_DEF[S.letras.length]||[0,2,4]);
+  // Los días que eligió el alumno mandan: las sesiones se reparten en rotación (A, B, C, A…)
+  S.days=dias.length?dias:(DIAS_DEF[Math.min(7,S.letras.length)]||[0,2,4]);
   S.sesiones=d.sesiones||[]; S.hist=d.historial||[];
   pendientes().forEach(sumarLocal);   // lo que todavía no llegó a la planilla también cuenta
   if(['nada','rir','rpe','ambos'].includes(d.alumno.esfuerzo)){S.pref.esfuerzo=d.alumno.esfuerzo;S.pref.avisoVisto=true}
