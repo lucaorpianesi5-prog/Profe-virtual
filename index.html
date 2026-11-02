@@ -416,13 +416,23 @@ button:active{transition:transform .1s}
 .ej-acciones button:active{transform:scale(.94)}
 .ej-acciones button.video{color:var(--texto);background:var(--card2)}
 .series{display:flex;flex-direction:column;gap:.55rem}
-.serie{display:grid;grid-template-columns:20px 1fr 1fr 58px;gap:.5rem;align-items:center;transition:opacity .3s}
+.serie{display:grid;grid-template-columns:20px minmax(0,1fr) minmax(0,1.2fr) 56px;gap:.5rem;align-items:center;transition:opacity .3s}
 .serie-head{font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--texto3);font-weight:700;text-align:center}
 .serie-n{font-size:.76rem;color:var(--texto3);font-weight:700;text-align:center}
 .step{display:flex;align-items:center;height:58px;touch-action:manipulation;user-select:none;border-radius:12px;background:var(--card);border:1.5px solid var(--borde2);overflow:hidden;transition:all .25s}
-.step button{width:48px;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--texto2);flex-shrink:0}
+.step button{width:40px;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--texto2);flex-shrink:0}
 .step button:active{background:var(--acento-dim)}
-.step output{flex:1;text-align:center;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.step output,.step input{flex:1;width:0;min-width:0;text-align:center;font-size:1.15rem;font-weight:700;font-variant-numeric:tabular-nums}
+.step input{height:100%;border:none;background:transparent;color:inherit;font-family:inherit;padding:0;border-radius:0;-webkit-appearance:none;appearance:none}
+.step input:focus{outline:none;background:var(--acento-dim)}
+.step:focus-within{border-color:var(--acento)}
+.step input::placeholder{color:var(--texto3)}
+.ar-lado{display:flex;align-items:center;gap:.5rem;min-height:44px;font-size:.8rem;font-weight:600;color:var(--texto2);align-self:flex-start;padding:0 .2rem}
+.ar-lado i{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--borde2);display:inline-flex;align-items:center;justify-content:center}
+.ar-lado i .ic{width:14px;height:14px;opacity:0}
+.ar-lado.on{color:var(--acento)}
+.ar-lado.on i{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento)}
+.ar-lado.on i .ic{opacity:1}
 .serie-ok{width:58px;height:58px;border-radius:50%;border:2px solid var(--borde2);color:var(--texto3);font-size:1.1rem;display:flex;align-items:center;justify-content:center;transition:all .3s var(--ease)}
 .serie-ok:active{transform:scale(.85)}
 .serie.hecha .serie-ok{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento);transform:scale(1.05)}
@@ -1221,7 +1231,7 @@ function renderApp(){
   $('#inicio-c').innerHTML=`
    <div class="app-top"><div><div class="saludo">Hola de nuevo,</div><div class="saludo-nombre">${nombre}</div></div><div class="avatar">${inic}</div></div>
    ${pl?`<div class="hoy-card"><div class="card-label">${etiqueta}${entrenoHoy?' · hoy ya entrenaste '+ico('check'):''}</div><div class="sesion-tit">Sesión ${l} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${pl.ej.reduce((a,e)=>a+e.s,0)} series</div>
-     <div class="sesion-lista">${pl.ej.slice(0,3).map(e=>`<div class="sesion-item"><span>${e.n}</span><span>${e.s} × ${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}</span></div>`).join('')}${pl.ej.length>3?`<div class="sesion-item mas"><span>+ ${pl.ej.length-3} más</span><span></span></div>`:''}</div>
+     <div class="sesion-lista">${pl.ej.slice(0,3).map(e=>`<div class="sesion-item"><span>${e.n}</span><span>${e.s} × ${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.lado?' c/lado':''}</span></div>`).join('')}${pl.ej.length>3?`<div class="sesion-item mas"><span>+ ${pl.ej.length-3} más</span><span></span></div>`:''}</div>
      <button class="btn" id="btn-ses">Empezar sesión ${REAL?l:''}</button></div>`
    :REAL&&puedeArmar()?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Armá tu primera sesión</div><div class="sesion-meta">Elegí los ejercicios del catálogo, las series y las repeticiones. Queda guardado en tu plan.</div><button class="btn" id="btn-armar1">${ico('plus')}Armar sesión</button></div>`
    :REAL?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá. Si ya te avisó que está listo, volvé a abrir la app.</div></div>`
@@ -1385,7 +1395,7 @@ function renderMiPlan(){
   <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${hechos.has(i)?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${letraDia(kk)||'·'}</b></button>`}).join('')}</div>
   ${puedeArmar()?`<div class="ar-sesiones"><div class="card-label">Tus sesiones</div><div class="ar-chips">${S.letras.map(x=>`<button class="ar-chip" data-armar="${x}"><b>${x}</b><span>${esc(S.plan[x].meta)}</span>${ico('edit')}</button>`).join('')}<button class="ar-chip nueva" data-armar="">${ico('plus')}Armar sesión</button></div></div>`:''}</div>
   <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series</div></div>
-  <div class="ej-cards">${(cs=>pl.ej.map((e,i)=>`${cs[i]&&cs[i].a===i?`<div class="circ-h">Circuito · ${cs[i].z-i+1} ejercicios · ${cs[i].n} vueltas</div>`:''}<div class="acordeon ej-card${cs[i]?' en-circ':''}" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat?e.pat+' · ':''}${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.seg?' seg':''}</small><em>${lastSets(e).length?'Última vez: '+lastTxt(e):'Todavía sin registros'}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-pa="video">${ico('play')}Video</button>`:''}${REAL?'':`<button data-pa="cambiar">${ico('swap')}Cambiar</button>`}</div></div></div></div></div>`).join(''))(circuitos(pl.ej))}</div>`
+  <div class="ej-cards">${(cs=>pl.ej.map((e,i)=>`${cs[i]&&cs[i].a===i?`<div class="circ-h">Circuito · ${cs[i].z-i+1} ejercicios · ${cs[i].n} vueltas</div>`:''}<div class="acordeon ej-card${cs[i]?' en-circ':''}" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat?e.pat+' · ':''}${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.seg?' seg':''}${e.lado?' por lado':''}</small><em>${lastSets(e).length?'Última vez: '+lastTxt(e):'Todavía sin registros'}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-pa="video">${ico('play')}Video</button>`:''}${REAL?'':`<button data-pa="cambiar">${ico('swap')}Cambiar</button>`}</div></div></div></div></div>`).join(''))(circuitos(pl.ej))}</div>`
   :!S.letras.length&&puedeArmar()?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Todavía no armaste sesiones</div><div class="sesion-meta">Elegí los ejercicios del catálogo, las series y las repeticiones. Queda guardado y la app sigue tu progresión de carga.</div><button class="btn" data-armar="">${ico('plus')}Armar la primera sesión</button></div>`
   :REAL&&!S.letras.length?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá.</div></div>`
   :`<div class="hoy-card"><div class="card-label">${DIAS_N[sel]}</div><div class="sesion-tit">Día de descanso ${ico('moon')}</div><div class="sesion-meta">El descanso también es entrenamiento: el músculo se adapta mientras descansás.</div></div>`}</div>`;
@@ -1442,7 +1452,7 @@ function abrirArmar(L){
   if(pl){
     const crudo=(S.planCrudo||[]).find(p=>p.sesion===L);
     AR={L,nuevo:false,nombre:crudo?crudo.nombre:(REAL?'':pl.meta),sucio:false,
-      ej:pl.ej.map(e=>({n:e.n,s:String(e.s),rmin:String(e.r[0]),rmax:String(e.r[1]),seg:!!e.seg||e.n==='Plancha',d:String(e.d),kg:(k=>k?fmt(k):'')(REAL?sugerida(e):e.kg),b:e.b||'',notas:e.notas||'',porPlan:REAL?(e.porPlan||''):(e.por||'')}))};
+      ej:pl.ej.map(e=>({n:e.n,s:String(e.s),rmin:String(e.r[0]),rmax:String(e.r[1]),seg:!!e.seg||e.n==='Plancha',lado:!!e.lado,d:String(e.d),kg:(k=>k?fmt(k):'')(REAL?sugerida(e):e.kg),b:e.b||'',notas:e.notas||'',porPlan:REAL?(e.porPlan||''):(e.por||'')}))};
   } else {
     const libre=[...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(x=>!S.letras.includes(x));
     if(!libre){snack('Llegaste al máximo de sesiones');return}
@@ -1470,12 +1480,13 @@ function renderArmar(){
        <button class="ar-ic" data-a="up" aria-label="Subir" ${i?'':'disabled'}>${ico('up')}</button><button class="ar-ic" data-a="down" aria-label="Bajar" ${i<AR.ej.length-1?'':'disabled'}>${ico('down')}</button><button class="ar-ic" data-a="del" aria-label="Quitar">${ico('trash')}</button></div>
       <div class="ar-grid">
        <label class="campo"><span>Series</span><input class="cin num" data-f="s" inputmode="numeric" value="${esc(e.s)}"></label>
-       <div class="campo"><span>${e.seg?'Segundos':'Reps'} (mín–máx)</span><div class="ar-reps"><input class="cin num" data-f="rmin" inputmode="numeric" aria-label="Mínimo" value="${esc(e.rmin)}"><i>–</i><input class="cin num" data-f="rmax" inputmode="numeric" aria-label="Máximo" value="${esc(e.rmax)}"></div></div>
+       <div class="campo"><span>${e.seg?'Seg':'Reps'}${e.lado?' por lado':''} (mín–máx)</span><div class="ar-reps"><input class="cin num" data-f="rmin" inputmode="numeric" aria-label="Mínimo" value="${esc(e.rmin)}"><i>–</i><input class="cin num" data-f="rmax" inputmode="numeric" aria-label="Máximo" value="${esc(e.rmax)}"></div></div>
        <div class="campo"><span>Unidad</span><div class="ar-uni"><button data-a="reps" class="${e.seg?'':'on'}">Reps</button><button data-a="seg" class="${e.seg?'on':''}">Seg</button></div></div>
        <label class="campo"><span>${c?(i<c.z?'Pausa (seg)':'Fin de vuelta (seg)'):'Descanso (seg)'}</span><input class="cin num" data-f="d" inputmode="numeric" value="${esc(e.d)}"></label>
        <label class="campo"><span>Carga (kg)</span><input class="cin num" data-f="kg" inputmode="decimal" placeholder="—" value="${esc(e.kg)}"></label>
        <label class="campo"><span>Nota</span><input class="cin" data-f="notas" maxlength="200" placeholder="Opcional" value="${esc(e.notas)}"></label>
       </div>
+      <button class="ar-lado ${e.lado?'on':''}" data-a="lado" aria-pressed="${!!e.lado}"><i>${ico('check')}</i>Por lado (unilateral): las ${e.seg?'segundos':'repeticiones'} se cuentan de cada lado</button>
      </div>
      ${sig?`<div class="ar-link"><button data-a="link" data-i="${i}" class="${unido?'on':''}">${ico('link')}${unido?'En circuito · separar':'Unir en circuito con el siguiente'}</button></div>`:''}`}).join('')}
    <button class="btn sec chico" id="ar-add">${ico('plus')}Agregar ejercicio</button>
@@ -1504,6 +1515,7 @@ $('#ar-c').addEventListener('click',e=>{
   else if(a==='down'&&i<ej.length-1)[ej[i+1],ej[i]]=[ej[i],ej[i+1]];
   else if(a==='del'){const ant=ej.splice(i,1)[0];renderArmar();marcar();snack('Quitaste '+ant.n,()=>{AR.ej.splice(i,0,ant);renderArmar()});return}
   else if(a==='reps'||a==='seg'){ej[i].seg=a==='seg'}
+  else if(a==='lado'){ej[i].lado=!ej[i].lado}
   else return;
   marcar(); vibra(6); renderArmar();
 });
@@ -1568,8 +1580,9 @@ function elegirEjercicio(i,patIni){
       const b=e.target.closest('[data-n]'); if(!b)return; const n=b.dataset.n.slice(0,80);
       if(i==null){
         const kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
-        AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
-      } else AR.ej[i].n=n;
+        const c=enCatalogo(n);
+        AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,lado:!!(c&&c.lado),d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
+      } else { AR.ej[i].n=n; const c=enCatalogo(n); if(c&&c.lado!=null)AR.ej[i].lado=!!c.lado }
       marcar(); cerrar(); vibra(10); renderArmar();
       if(i==null)setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},60);
     });
@@ -1579,7 +1592,7 @@ function elegirEjercicio(i,patIni){
 /* Lo que se manda al proxy: números limpios y circuitos de un solo ejercicio sin bloque */
 function sesionArmada(){
   const ej=AR.ej.map(e=>{const rmin=Math.max(1,Math.round(numIn(e.rmin)||numIn(e.rmax)||10)), rmax=Math.max(1,Math.round(numIn(e.rmax)||rmin));
-    return {n:e.n.trim(),s:Math.min(20,Math.max(1,Math.round(numIn(e.s)||3))),rmin:Math.min(rmin,rmax),rmax:Math.max(rmin,rmax),seg:!!e.seg,
+    return {n:e.n.trim(),s:Math.min(20,Math.max(1,Math.round(numIn(e.s)||3))),rmin:Math.min(rmin,rmax),rmax:Math.max(rmin,rmax),seg:!!e.seg,lado:!!e.lado,
       d:Math.min(900,Math.max(0,Math.round(numIn(e.d)==null?90:numIn(e.d)))),kg:Math.max(0,numIn(e.kg)||0),b:e.b,notas:e.notas.trim(),porPlan:e.porPlan}});
   const cs=circuitos(ej); ej.forEach((e,i)=>{if(!cs[i])e.b=''});
   return {sesion:AR.L,nombre:AR.nombre.trim(),ejercicios:ej};
@@ -1596,7 +1609,7 @@ async function guardarArmada(empezar){
     bs.forEach(b=>b.disabled=false); $('#ar-go').textContent=txt;
   } else {
     const c=k=>S.cat[k]||enCatalogo(k)||{};
-    S.plan[L]={meta:q.nombre||'Sesión '+L,ej:q.ejercicios.map(e=>({n:e.n,pat:c(e.n).pat||'',s:e.s,r:[e.rmin,e.rmax],seg:e.seg,d:e.d,kg:e.kg,b:e.b,notas:e.notas,por:e.porPlan||c(e.n).por||''}))};
+    S.plan[L]={meta:q.nombre||'Sesión '+L,ej:q.ejercicios.map(e=>({n:e.n,pat:c(e.n).pat||'',s:e.s,r:[e.rmin,e.rmax],seg:e.seg,lado:e.lado,d:e.d,kg:e.kg,b:e.b,notas:e.notas,por:e.porPlan||c(e.n).por||''}))};
     if(!S.letras.includes(L))S.letras.push(L);
   }
   AR.sucio=false; renderApp();
@@ -1829,7 +1842,7 @@ function renderSesion(){
    <div><div class="ej-patron">${e.pat}</div><div class="ej-nombre">${e.n}</div>${cs[i]?'<div class="circ-ind"></div>':''}</div>
    <div class="seg pg-seg"><span class="seg-ind"></span><button class="on" data-pane="reg">Registrar</button><button data-pane="tec">Técnica</button></div>
    <div class="pane pane-reg">
-     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
+     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × ${e.seg?'seg':'reps'}${e.lado?' por lado':''}</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
      ${ultimaHTML(e)}
      ${(c=>c?`<div class="consejo ${c.tipo!=='prog'?'atras':''}">${ico(c.tipo==='reg'?'down':c.tipo==='pausas'?'info':'up')}<div>${c.html}${c.btn?`<button data-a="${c.btn[0]}">${c.btn[1]}</button>`:''}</div></div>`:'')(consejo(e))}
      ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
@@ -1857,8 +1870,24 @@ function accionesTec(e){
 }
 function pintaSeries(i){
   const e=S.ses.ex[i], c=$(`.series[data-i="${i}"]`); const sec=e.seg||e.n==='Plancha';
-  c.innerHTML=`<div class="serie"><span></span><span class="serie-head">kg</span><span class="serie-head">${sec?'Seg':'Reps'}</span><span></span></div>`+e.sets.map((s,j)=>`<div class="serie ${s.done?'hecha':''}" data-j="${j}"><span class="serie-n">${j+1}</span><div class="step" data-f="kg"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${e.kgSug||s.kg?fmt(s.kg):'—'}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><div class="step" data-f="reps"><button data-d="-" aria-label="Menos">${ico('minus')}</button><output>${s.reps}</output><button data-d="+" aria-label="Más">${ico('plus')}</button></div><button class="serie-ok" aria-label="Serie ${j+1}">${ico('check')}</button></div>`).join('');
+  /* Primero reps (o segundos) y después kg. El número se puede escribir: tocarlo abre el teclado numérico */
+  const uni=(sec?'Seg':'Reps')+(e.lado?' c/lado':'');
+  c.innerHTML=`<div class="serie"><span></span><span class="serie-head">${uni}</span><span class="serie-head">kg</span><span></span></div>`+e.sets.map((s,j)=>`<div class="serie ${s.done?'hecha':''}" data-j="${j}"><span class="serie-n">${j+1}</span><div class="step" data-f="reps"><button data-d="-" aria-label="Menos">${ico('minus')}</button><input inputmode="numeric" enterkeyhint="done" aria-label="${uni} serie ${j+1}" value="${s.reps}"><button data-d="+" aria-label="Más">${ico('plus')}</button></div><div class="step" data-f="kg"><button data-d="-" aria-label="Menos">${ico('minus')}</button><input inputmode="decimal" enterkeyhint="done" aria-label="Kilos serie ${j+1}" placeholder="—" value="${e.kgSug||s.kg?fmt(s.kg):''}"><button data-d="+" aria-label="Más">${ico('plus')}</button></div><button class="serie-ok" aria-label="Serie ${j+1}">${ico('check')}</button></div>`).join('');
 }
+/* Escribir el número directamente */
+const valorStep=(f,v)=>{const n=parseFloat(String(v).replace(',','.'));if(isNaN(n)||n<0)return null;return f==='kg'?Math.min(999,+n.toFixed(2)):Math.min(999,Math.round(n))};
+/* Al tocar el número queda seleccionado entero, así lo que escribís lo reemplaza (el toque deja el cursor donde cae: se vuelve a seleccionar al soltar) */
+let enfocado=0;
+$('#pager').addEventListener('focusin',e=>{const t=e.target.closest('.step input');if(t){enfocado=Date.now();setTimeout(()=>t.select(),0)}});
+$('#pager').addEventListener('pointerup',e=>{const t=e.target.closest('.step input');if(t&&Date.now()-enfocado<600)setTimeout(()=>t.select(),0)});
+$('#pager').addEventListener('mouseup',e=>{if(e.target.closest('.step input')&&Date.now()-enfocado<600)e.preventDefault()});
+$('#pager').addEventListener('input',e=>{
+  const t=e.target.closest('.step input'); if(!t)return;
+  const i=+t.closest('.pg').dataset.i, j=+t.closest('.serie').dataset.j, f=t.parentNode.dataset.f, v=valorStep(f,t.value);
+  if(v!=null){S.ses.ex[i].sets[j][f]=v;guardaSesLocal()}
+});
+$('#pager').addEventListener('change',e=>{const t=e.target.closest('.step input');if(t)pintaSeries(+t.closest('.pg').dataset.i)});
+$('#pager').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.step input'))e.target.blur()});
 /* − y + : un toque cambia de a uno; mantener apretado repite */
 $('#pager').addEventListener('pointerdown',e=>{
   const st=e.target.closest('.step button'); if(!st)return;
@@ -1887,7 +1916,8 @@ $('#pager').addEventListener('click',e=>{
       /* Cambia el ejercicio y trae su técnica y su video del catálogo, si están cargados */
       const poner=(nombre)=>{
         const c=S.cat[nombre]||{n:nombre,pat:ex.pat,video:'',como:[],err:'',mus:[],por:'',reg:'',prog:''};
-        Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog});
+        Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog,lado:c.lado!=null?!!c.lado:ex.lado});
+        pintaSeries(i); const pl_=pg.querySelector('.presc-lbl'); if(pl_)pl_.textContent='Series × '+(ex.seg?'seg':'reps')+(ex.lado?' por lado':'');
         pg.querySelector('.ej-nombre').textContent=ex.n; pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex); guardaSesLocal();
       };
       const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, firme y <b>sin pausas</b>. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;

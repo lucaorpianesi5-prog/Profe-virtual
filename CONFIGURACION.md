@@ -105,7 +105,7 @@ Subí el cambio (commit y push). En un par de minutos la app publicada ya usa da
 | `orden` | orden dentro de la sesión |
 | `ejercicio` | nombre. Si coincide con uno de **Ejercicios**, trae la técnica, el video y las variantes |
 | `series`, `reps_min`, `reps_max` | por ejemplo 3, 8, 10. Si es fijo, poné el mismo número en los dos |
-| `unidad` | `reps` o `seg` (para planchas y similares) |
+| `unidad` | `reps` o `seg` (para planchas y similares). Para unilaterales: `reps por lado` o `seg por lado`. Si queda vacía, se usa la casilla `por_lado` de Ejercicios |
 | `descanso_seg` | segundos de descanso |
 | `carga_kg` | carga inicial. Después, la app sugiere a partir de lo que el alumno registró |
 | `por_que` | el porqué de este ejercicio para este alumno (si está vacío, usa el de Ejercicios) |
@@ -158,6 +158,7 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 | `como_1`, `como_2`, `como_3` | las tres claves de técnica |
 | `error_comun`, `musculos` (separados por coma), `por_que` | |
 | `patron`, `regresion`, `progresion` | solo cuentan para los ejercicios que **no** están en la Biblioteca |
+| `por_lado` | casilla: marcala en los ejercicios **unilaterales** (por ejemplo, Peso muerto a una pierna). La app muestra "reps por lado" y las repeticiones se registran de cada lado |
 
 **Sesiones** y **Registro** las escribe la app. Podés leerlas, filtrarlas o armar gráficos en otra hoja, pero no cambies los encabezados. Registro guarda cada serie y queda completo, aunque la app solo lee las últimas 16 semanas (`SEMANAS_HISTORIAL` en el proxy).
 
