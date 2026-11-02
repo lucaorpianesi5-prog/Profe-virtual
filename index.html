@@ -1608,12 +1608,13 @@ async function guardarArmada(empezar){
   if(!AR.ej.length)return;
   const q=sesionArmada(), L=AR.L, bs=[$('#ar-save'),$('#ar-go')];
   if(REAL){
-    bs.forEach(b=>b.disabled=true); const txt=$('#ar-go').textContent; $('#ar-go').textContent='Guardando…';
+    const btn=empezar?$('#ar-go'):$('#ar-save'), txt=btn.textContent;
+    bs.forEach(b=>b.disabled=true); btn.textContent='Guardando…';
     try{ const r=await api('guardarSesionPlan',q); aplicarDatos(r); }
-    catch(e){ bs.forEach(b=>b.disabled=false); $('#ar-go').textContent=txt;
+    catch(e){ bs.forEach(b=>b.disabled=false); btn.textContent=txt;
       if(e.code==='auth'||e.code==='no_alumno'||e.code==='inactivo')return salirCuenta(mensajeError(e));
       return snack(e.code?mensajeError(e):'Sin conexión: no se guardó. Probá de nuevo cuando tengas señal.'); }
-    bs.forEach(b=>b.disabled=false); $('#ar-go').textContent=txt;
+    bs.forEach(b=>b.disabled=false); btn.textContent=txt;
   } else {
     const c=k=>S.cat[k]||enCatalogo(k)||{};
     S.plan[L]={meta:q.nombre||'Sesión '+L,ej:q.ejercicios.map(e=>({n:e.n,pat:c(e.n).pat||'',s:e.s,r:[e.rmin,e.rmax],seg:e.seg,lado:e.lado,d:e.d,kg:e.kg,b:e.b,notas:e.notas,por:e.porPlan||c(e.n).por||''}))};
@@ -1637,10 +1638,11 @@ function borrarSesionPlan(){
   sheet(`<div class="sheet-col"><div><h3>¿Borrar la sesión ${L}?</h3><p class="sub">${REAL?'Sale de tu plan. Tus registros de esa sesión quedan, y la sesión se copia a la hoja Planes_archivo por si la querés recuperar.':'Sale del plan de la demo.'}</p></div><button class="btn" id="bs-no">Cancelar</button><button class="btn sec chico" id="bs-si" style="color:var(--rojo)">Borrar sesión ${L}</button></div>`,()=>{
     $('#bs-no').onclick=cerrar;
     $('#bs-si').onclick=async()=>{
-      cerrar();
-      if(REAL){ try{ aplicarDatos(await api('borrarSesionPlan',{sesion:L})) }catch(e){ return snack(e.code?mensajeError(e):'Sin conexión: no se borró. Probá de nuevo cuando tengas señal.') } }
+      /* La confirmación queda abierta con "Borrando…" mientras responde la planilla (tarda unos segundos) */
+      const si=$('#bs-si'), no=$('#bs-no'); si.disabled=no.disabled=true; si.textContent='Borrando…';
+      if(REAL){ try{ aplicarDatos(await api('borrarSesionPlan',{sesion:L})) }catch(e){ si.disabled=no.disabled=false; si.textContent='Borrar sesión '+L; return snack(e.code?mensajeError(e):'Sin conexión: no se borró. Probá de nuevo cuando tengas señal.') } }
       else { delete S.plan[L]; S.letras=S.letras.filter(x=>x!==L) }
-      AR=null; renderApp(); show('app','i'); setTab('plan'); snack('Sesión '+L+' borrada');
+      cerrar(); AR=null; renderApp(); show('app','i'); setTab('plan'); renderMiPlan(); vibra([12,30,12]); snack('Sesión '+L+' borrada de tu plan');
     };
   });
 }
