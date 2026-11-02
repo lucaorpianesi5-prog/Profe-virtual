@@ -170,16 +170,16 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
   - `ejercicio`, en Planes y en Ejercicios: sugiere los ejercicios de la Biblioteca. Si escribís uno que no está, avisa con una marca roja, pero no lo bloquea. Agregalo primero a la Biblioteca, así el nombre coincide en todas las hojas.
   - `estado` en Alumnos: activo, vencido o pausa.
   - `unidad` en Planes: reps, seg, reps por lado o seg por lado.
-  - La lista de ejercicios sale de una hoja oculta, **Listas**, que se actualiza sola con la Biblioteca. No la edites.
+  - La lista de ejercicios sale de una hoja oculta, **Listas**, que el proxy rehace cada vez que editás la Biblioteca. No la edites.
 - **Aviso antes de editar**: Sesiones, Registro, Progresiones, Planes_archivo, Panel y Listas piden confirmación si las editás a mano. La app las sigue escribiendo igual.
-- **Panel**: la primera hoja, una fila por alumno, hecha solo con fórmulas. Muestra:
+- **Panel**: la primera hoja, una fila por alumno. No usa fórmulas: lo calcula el proxy y se actualiza solo al abrir la planilla, cada vez que alguien guarda una sesión y con el menú **Profe Virtual → Actualizar Panel**. Muestra:
   - estado, días por semana y última sesión;
   - días sin entrenar (en amarillo, si pasan 7);
   - sesiones de los últimos 30 días y constancia de las últimas 4 semanas (sesiones hechas / días × 4);
   - vencimiento y días para vencer (en rojo, si faltan 7 o menos);
   - cuántos ejercicios tiene registrados.
 
-  No escribas en el Panel: corré `configurar` para rehacerlo.
+  No escribas en el Panel: lo que pongas se pisa en la próxima actualización.
 - **Columnas que ya no uses** (por ejemplo `patron`, `regresion` y `progresion` de Ejercicios, cuando todo esté en la Biblioteca): **ocultalas**, no las borres. Si las borrás, `configurar` las vuelve a crear.
 
 ## Regla de carga sugerida
