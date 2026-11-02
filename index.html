@@ -2155,7 +2155,7 @@ function relayout(){
 async function api(accion,datos={}){
   // Sin encabezados: el navegador lo manda como texto plano y Apps Script lo acepta sin pedido previo (CORS)
   const r=await fetch(CONFIG.proxy,{method:'POST',body:JSON.stringify({accion,token:ls.get('pv-token'),...datos})});
-  const j=await r.json();
+  let j; try{ j=await r.json() }catch(_){ const e=new Error('La planilla no respondió como se esperaba.'); e.code='respuesta'; throw e }
   if(!j.ok){const e=new Error(j.mensaje||j.error);e.code=j.error;throw e}
   return j;
 }
@@ -2165,9 +2165,12 @@ const MSJ={
   auth:()=>'Tu sesión venció o no se pudo verificar. Entrá de nuevo con Google.',
   config:e=>'La planilla de Luca no está lista: '+e.message,
   permiso:()=>'Tu cuenta no puede armar sesiones.',
-  datos:e=>e.message
+  datos:e=>e.message,
+  respuesta:()=>'La planilla no respondió como se esperaba. Revisá en Apps Script que la última versión del proxy esté publicada (Gestionar implementaciones → Nueva versión).',
+  accion:()=>'La planilla todavía usa la versión anterior del proxy: en Apps Script, publicá una nueva versión (Gestionar implementaciones → ✏️ → Nueva versión).'
 };
-const mensajeError=e=>(MSJ[e.code]||(()=>'No hay conexión con el registro de Luca. Probá de nuevo en un rato.'))(e);
+/* Sin código = no llegó a la planilla (sin conexión). Con un código que no conocemos, se muestra el error real: nunca se disfraza de "sin conexión". */
+const mensajeError=e=>MSJ[e.code]?MSJ[e.code](e):e.code?'La planilla respondió con un error: '+(e.message||e.code):'No hay conexión con el registro de Luca. Probá de nuevo en un rato.';
 
 function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
