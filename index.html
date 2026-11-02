@@ -1313,11 +1313,11 @@ function consejo(e){
   const bajo=x=>x.s.some(s=>(s.reps||0)<e.r[0]);
   const prog=e.prog?esc(e.prog):'';
   if(u[0]&&!editado){
-    const max=Math.max(0,...u[0].s.map(s=>s.kg||0)), sube=+(max+incremento(max)).toFixed(1);
+    const max=Math.max(0,...u[0].s.map(s=>s.kg||0)), sube=+(max+incremento(max)).toFixed(1), r2=repsAlSubir(e,u[0].s);
     if(tope(u[0])&&(max||prog))return {tipo:'prog',btn:prog?['prog','Ver la progresión']:null,
-      html:max?`La última vez completaste el tope sin pausas: hoy te sugerimos <b>${fmt(sube)} kg</b>.${prog?` También podés pasar a <b>${prog}</b>.`:''}`
+      html:max?`La última vez completaste el tope sin pausas: hoy te sugerimos <b>${fmt(sube)} kg × ${r2} reps</b>, la mitad de las repeticiones, y volver a construir hasta el tope.${prog?` También podés pasar a <b>${prog}</b>.`:''}<small class="u-ini">${TXT_SUBIR}</small>`
               :`La última vez completaste el tope sin pausas: podés pasar a <b>${prog}</b>.`};
-    if(topeP(u[0])&&(max||prog))return {tipo:'pausas',sube:max?sube:null,btn:max?['subir','Subir igual a '+fmt(sube)+' kg']:['prog','Ver la progresión igual'],
+    if(topeP(u[0])&&(max||prog))return {tipo:'pausas',sube:max?sube:null,subeReps:r2,btn:max?['subir','Subir igual a '+fmt(sube)+' kg × '+r2]:['prog','Ver la progresión igual'],
       html:`La última vez llegaste al tope, pero con pausas. Lo más recomendable es ${max?`repetir <b>${fmt(max)} kg</b>`:'quedarte en este nivel'} hasta lograrlo sin pausas. Si igual querés ${max?'subir':'avanzar'}, es tu decisión.`};
   }
   if(u.length>=2&&u.every(bajo)&&e.reg)return {tipo:'reg',btn:['reg','Ver la regresión'],html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
@@ -1338,16 +1338,23 @@ function tsUltima(e){
   const u=ultimaVez(e); if(!u)return 0;
   const s=S.sesiones.find(x=>x.id===u.sets[0].id); return s&&s.g?s.g:0;
 }
-function sugerida(e){
-  if(!REAL)return e.kg;
+/* Al subir la carga, las repeticiones bajan siempre a la mitad de las últimas, aunque quede debajo del rango:
+   12 × 50 kg → 6 × 52,5 kg; 8 → 4; 9 → 4. Después se vuelve a construir hasta el tope. Es la estructura del programa. */
+const repsAlSubir=(e,sets)=>Math.max(1,Math.floor(Math.max(0,...sets.map(s=>s.reps||0))/2));   // impares, para abajo: mejor con margen
+/* Lo que la app propone para hoy: { kg, reps, sube } */
+function sugerencia(e){
+  const top=e.r[1];
+  if(!REAL)return {kg:e.kg,reps:top,sube:false};
   /* Caso A: si editaste la sesión después de tu último registro, manda la carga del plan */
-  if(e.act&&e.act>tsUltima(e))return e.kg||0;
+  if(e.act&&e.act>tsUltima(e))return {kg:e.kg||0,reps:top,sube:false};
   const ls_=lastSets(e);
-  if(!ls_.length){ const p=progDe(e); return p&&p.uk?p.uk:(e.kg||0) }
-  const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return e.kg||0;
+  if(!ls_.length){ const p=progDe(e); return {kg:p&&p.uk?p.uk:(e.kg||0),reps:top,sube:false} }
+  const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return {kg:e.kg||0,reps:top,sube:false};
   const tope=ls_.length>=e.s&&ls_.every(s=>serieTope(e,s));
-  return tope?+(max+incremento(max)).toFixed(1):max;
+  return tope?{kg:+(max+incremento(max)).toFixed(1),reps:repsAlSubir(e,ls_),sube:true}:{kg:max,reps:top,sube:false};
 }
+const sugerida=e=>sugerencia(e).kg;
+const TXT_SUBIR='Subir la carga y bajar las repeticiones a la mitad para volver a construir hasta el tope es la estructura del programa: funciona y previene lesiones. Es una guía, la decisión es tuya.';
 function tecHTML(e){
   const f=info(e), por=e.por||(e.pat?'Trabaja el patrón de '+e.pat.toLowerCase()+', que tu plan repite varias veces por semana.':'');
   return `<div class="card-label">Cómo hacerlo</div><ol class="cues">${f.c.map((c,k)=>`<li><span class="cue-n">${k+1}</span><span class="${EJ}">${c}</span></li>`).join('')}</ol>
@@ -1714,7 +1721,7 @@ function explicaEsfuerzo(que,volver){
 }
 document.addEventListener('click',e=>{const i=e.target.closest('[data-info]'); if(i)(i.dataset.info==='pausas'?explicaPausas:explicaEsfuerzo)(i.dataset.info)});
 /* Pausas dentro de la serie (rest-pause): sirven para completar el volumen, pero para subir hay que lograrlo sin pausas */
-const TXT_METODO='Trabajá en el rango de repeticiones de tu plan (por ejemplo, de 4 a 12). <b>Subí la carga</b> recién cuando completás el tope en todas las series de forma cómoda, firme y <b>sin pausas</b> entre repeticiones.';
+const TXT_METODO='Trabajá en el rango de repeticiones de tu plan (por ejemplo, de 4 a 12). <b>Subí la carga</b> recién cuando completás el tope en todas las series de forma cómoda, firme y <b>sin pausas</b> entre repeticiones, y en ese momento <b>bajá las repeticiones a la mitad</b> para volver a construir.';
 function explicaPausas(){
   sheet(`<div class="sheet-col"><div><h3>Pausas dentro de la serie</h3><p class="sub">Anotá si tuviste que frenar durante la serie. Si no tocás nada, cuenta como sin pausas.</p></div>
    <div class="porque"><div class="porque-tit">Cómo se usan</div><div class="porque-txt">Si llegás al fallo antes de completar las repeticiones, podés frenar unos <b>10 segundos</b>, sin soltar la posición si se puede, y seguir. En ese tiempo el músculo recupera parte de su energía inmediata (ATP) y te permite sumar repeticiones de calidad.</div></div>
@@ -1736,7 +1743,7 @@ function sheetEsfuerzo(origen){
 }
 function pintaEsfuerzo(){
   $('#rir').hidden=!hayRirSerie(); $('#rpe').hidden=!hayRpeSerie();
-  $$('.nota-prog').forEach(n=>n.textContent='Mantené apretado un − o un + para cambiar rápido. Si completás el tope de repeticiones en todas las series, firme y sin pausas'+(hayRirSerie()?' (RIR 2 o más)':'')+', la próxima vez te sugerimos subir la carga.');
+  $$('.nota-prog').forEach(n=>n.textContent='Mantené apretado un − o un + para cambiar rápido. Si completás el tope de repeticiones en todas las series, firme y sin pausas'+(hayRirSerie()?' (RIR 2 o más)':'')+', la próxima vez te sugerimos subir la carga y bajar las repeticiones a la mitad.');
 }
 
 /* ───────── Progreso ───────── */
@@ -1831,7 +1838,7 @@ function iniciar(reducida){
   cerrar(); S.reducida=reducida; const ci={...S.ci}; S.ci={sueno:3,estres:3,energia:3};
   const L=S.sesElegida||proximaSesion(), pl=S.plan[L]; S.sesElegida=null;
   S.ses={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),fecha:isoHoy(),L,t0:Date.now(),idx:0,prs:0,cur:null,ci,reducida,rpeSes:null,
-    ex:pl.ej.map(e=>{const kg=sugerida(e);return {...e,kgSug:kg,pr:false,sets:Array.from({length:Math.max(1,e.s-(reducida?1:0))},()=>({kg,reps:e.r[1],done:false,rir:null,rpe:null}))}})};
+    ex:pl.ej.map(e=>{const sg=sugerencia(e), kg=sg.kg;return {...e,kgSug:kg,repsSug:sg.reps,pr:false,sets:Array.from({length:Math.max(1,e.s-(reducida?1:0))},()=>({kg,reps:sg.reps,done:false,rir:null,rpe:null}))}})};
   renderSesion(); show('sesion','d'); pintaEsfuerzo(); guardaSesLocal(); arrancarReloj();
   wake(true).then(ok=>setTimeout(()=>snack(reducida?'Versión liviana: una serie menos por ejercicio':ok?'La pantalla queda encendida durante la sesión':'Este navegador no mantiene la pantalla encendida: si se apaga, tocala para seguir.'),500));
   if(!S.pref.avisoVisto)setTimeout(()=>{if($('#sesion').classList.contains('on'))sheetEsfuerzo('aviso')},1200);
@@ -1905,7 +1912,7 @@ $('#pager').addEventListener('click',e=>{
   if(a){
     const act=a.dataset.a;
     if(act==='video'){ verVideo(ex); }
-    else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done)s.kg=c.sube}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack('Carga: '+fmt(c.sube)+' kg. Si aparecen pausas, volvé a la anterior'); }
+    else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done){s.kg=c.sube;s.reps=c.subeReps}}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack(fmt(c.sube)+' kg × '+c.subeReps+'. Si aparecen pausas, volvé a la carga anterior'); }
     else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
       let lista;
@@ -2050,7 +2057,7 @@ function terminar(){
   const maxP=Math.max(0,...p.sets.filter(s=>s.done).map(s=>s.kg));
   $('#cierre-rpe').hidden=!hayRpeSesion(); ses.rpeSes=null;
   $('#rpe-ses').innerHTML=[6,7,8,9,10].map(n=>`<button data-v="${n}"><b>${n}</b><small>${RPE_PAL[n]}</small></button>`).join('');
-  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:topeP?`${ico('info')}<span>En <b>${p.n.toLowerCase()}</b> llegaste al tope, pero con pausas. Lo óptimo es repetir la carga hasta lograrlo sin pausas; la próxima vez vas a poder elegir si subís igual.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
+  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg × ${repsAlSubir(p,p.sets)} reps</b>, la mitad, para volver a construir hasta el tope.</span>`:topeP?`${ico('info')}<span>En <b>${p.n.toLowerCase()}</b> llegaste al tope, pero con pausas. Lo óptimo es repetir la carga hasta lograrlo sin pausas; la próxima vez vas a poder elegir si subís igual.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
   vibra([30,60,30,60,80]);
 }
 $('#btn-listo').onclick=()=>{if(REAL&&S.ses)encolar(S.ses,true);renderApp();show('app','f')};
