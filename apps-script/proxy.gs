@@ -27,7 +27,7 @@ const HOJAS = {
   Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas'],
   Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas', 'bloque', 'actualizado'],
   Biblioteca: ['patron', 'enfoque'].concat(Array.from({ length: NIVELES }, (_, i) => 'nivel_' + (i + 1))),
-  Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion'],
+  Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion', 'por_lado'],
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
   Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe', 'pausas'],
   Progresiones: ['email', 'ejercicio', 'patron', 'enfoque', 'nivel', 'primera_fecha', 'primera_carga', 'primeras_reps',
@@ -64,6 +64,9 @@ function configurar() {
       .setHelpText('Elegí uno de la lista. Para sumar otro, agregalo en ' + que + ' al principio del proxy y corré configurar.').build();
     lib.getSheetByName('Biblioteca').getRange('A2:A').setDataValidation(lista(PATRONES, 'PATRONES'));
     lib.getSheetByName('Biblioteca').getRange('B2:B').setDataValidation(lista(ENFOQUES, 'ENFOQUES'));
+    // Ejercicios unilaterales: casilla en "por_lado" (las repeticiones se cuentan de cada lado)
+    const he = lib.getSheetByName('Ejercicios'), cabE = he.getRange(1, 1, 1, he.getLastColumn()).getValues()[0].map(String);
+    he.getRange(2, cabE.indexOf('por_lado') + 1, he.getMaxRows() - 1, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
   } catch (e) { Logger.log('No se pudieron poner las listas de patrón y enfoque: ' + e); }
 
   // Ejemplo para probar: vos como primer alumno, con un plan y un catálogo de muestra.
@@ -279,7 +282,7 @@ function catalogo() {
       n: txt(r.ejercicio), pat: txt(r.patron), video: txt(r.video_url),
       como: [r.como_1, r.como_2, r.como_3].map(txt).filter(Boolean),
       err: txt(r.error_comun), mus: txt(r.musculos).split(',').map(x => x.trim()).filter(Boolean),
-      por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion)
+      por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion), lado: siNo(r.por_lado)
     };
   });
   const cat = {}, cadenas = [];
@@ -316,6 +319,7 @@ function datosDe(a) {
       n: txt(r.ejercicio), pat: c.pat || '',
       s: num(r.series) || 3, r: [rmin || rmax || 10, rmax || rmin || 10],
       seg: /^seg/i.test(txt(r.unidad)), d: desc == null ? 90 : desc, kg: num(r.carga_kg) || 0,
+      lado: txt(r.unidad) ? /lado/i.test(txt(r.unidad)) : !!c.lado,   // reps (o segundos) por lado
       act: r.actualizado instanceof Date ? r.actualizado.getTime() : 0,   // cuándo se editó desde la app
       por: txt(r.por_que) || c.por || '', notas: txt(r.notas),
       b: txt(r.bloque).toUpperCase(), porPlan: txt(r.por_que),   // mismo bloque en filas seguidas = circuito
@@ -464,7 +468,7 @@ function reemplazarSesionPlan(email, letra, ses) {
         poner('email', email); poner('sesion', letra); poner('sesion_nombre', i === 0 ? celda(ses.nombre) : '');
         poner('orden', i + 1); poner('ejercicio', celda(e.n));
         poner('series', Math.min(20, Math.max(1, Math.round(num(e.s) || 3))));
-        poner('reps_min', rmin); poner('reps_max', rmax); poner('unidad', e.seg ? 'seg' : 'reps');
+        poner('reps_min', rmin); poner('reps_max', rmax); poner('unidad', (e.seg ? 'seg' : 'reps') + (e.lado ? ' por lado' : ''));
         poner('descanso_seg', Math.min(900, Math.max(0, Math.round(num(e.d) == null ? 90 : num(e.d)))));
         poner('carga_kg', Math.max(0, num(e.kg) || 0)); poner('notas', celda(e.notas).slice(0, 300));
         poner('por_que', celda(e.porPlan).slice(0, 500));
@@ -528,6 +532,7 @@ function num(v) {
   const n = Number(String(v).replace(',', '.'));
   return isNaN(n) ? null : n;
 }
+function siNo(v) { return v === true || /^(s[ií]|x|true|verdadero|1)$/i.test(txt(v)); }
 function vacio(v) { return v == null ? '' : v; }
 // Texto que viene de la app: que nunca se interprete como fórmula en la planilla.
 function celda(v) { const s = txt(v).slice(0, 200); return /^[=+\-@]/.test(s) ? "'" + s : s; }
