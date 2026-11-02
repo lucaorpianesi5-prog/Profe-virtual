@@ -110,6 +110,18 @@ Subí el cambio (commit y push). En un par de minutos la app publicada ya usa da
 | `carga_kg` | carga inicial. Después, la app sugiere a partir de lo que el alumno registró |
 | `por_que` | el porqué de este ejercicio para este alumno (si está vacío, usa el de Ejercicios) |
 | `notas` | una indicación tuya que el alumno ve durante la sesión |
+| `bloque` | opcional. Para armar un **circuito**, poné la misma letra (por ejemplo `B`) en dos o más ejercicios **seguidos** según `orden`. Vacío = ejercicio normal |
+
+### Circuitos
+
+Los ejercicios seguidos con el mismo `bloque` se hacen por vueltas: una serie de cada uno y se vuelve a empezar.
+
+- **Vueltas** = las `series` de cada ejercicio (si alguno tiene menos, en las últimas vueltas se saltea).
+- **`descanso_seg` de cada ejercicio** = la pausa antes de pasar al siguiente (por ejemplo 15). Puede ser `0`: pasa directo.
+- **`descanso_seg` del último del circuito** = el descanso al terminar la vuelta (por ejemplo 120).
+- En la sesión, al marcar una serie la app pasa sola al siguiente ejercicio del circuito y muestra "vuelta 2 de 3". En Mi plan, el circuito aparece agrupado.
+
+Si la columna `bloque` no está en tu hoja Planes, corré `configurar` de nuevo (menú **Profe Virtual → Configurar / reparar hojas**): la agrega al final sin tocar lo demás.
 
 Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
