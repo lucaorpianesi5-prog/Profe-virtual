@@ -139,15 +139,15 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
 | columna | qué va |
 |---|---|
-| `patron` | patrón de movimiento, por ejemplo "Sentadilla" o "Bisagra de cadera" |
+| `patron` | se elige de la lista: Bisagra de Cadera, Bisagra de Rodilla, Core, Tracción, Empuje, Tren superior, Tren inferior, Full body |
 | `enfoque` | se elige de la lista: Fuerza, Amplitud de Movimiento, Activación, Potencia, Equilibrio y Coordinación, Resistencia |
 | `nivel_1` … `nivel_8` | los ejercicios de la cadena, **de la regresión a la progresión**, de izquierda a derecha. Usá los que hagan falta |
 
 - Una fila por cadena. Cada ejercicio va en **una sola** cadena; si se repite, vale la primera.
 - La regresión y la progresión de cada ejercicio salen de sus vecinos en la fila: no hace falta cargarlas aparte.
 - Al armar una sesión, el buscador agrupa por patrón, filtra por enfoque y marca en qué nivel de cada cadena está el alumno.
-- La primera vez, `configurar` arma la Biblioteca sola siguiendo la regresión y la progresión de tu hoja Ejercicios. El enfoque queda vacío para que lo completes.
-- Para sumar otro enfoque, agregalo en `ENFOQUES`, al principio de `proxy.gs`, y corré `configurar`.
+- La primera vez, `configurar` arma la Biblioteca sola siguiendo la regresión y la progresión de tu hoja Ejercicios, y lleva cada patrón viejo al más parecido de la lista (por ejemplo, Sentadilla → Bisagra de Rodilla). Revisalos, y completá el enfoque, que queda vacío.
+- Para sumar otro patrón o enfoque, agregalo en `PATRONES` o `ENFOQUES`, al principio de `proxy.gs`, y corré `configurar`. La app muestra los patrones en ese orden.
 
 **Ejercicios**: la ficha de técnica de cada ejercicio. Es opcional: completala de a poco, para los que tengan video o claves.
 
@@ -163,13 +163,17 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
 **Progresiones** también la escribe la app: una fila por alumno y ejercicio, con la **primera** vez (fecha, carga y reps de la mejor serie), la **última**, la mejor carga y cuántas sesiones lleva. Se actualiza al guardar cada sesión. Es la hoja para ver de un vistazo cómo viene cada alumno, y la app la usa para la "última vez" cuando es más vieja que 16 semanas. Si alguna vez la querés rehacer desde Registro: menú **Profe Virtual → Rehacer Progresiones desde Registro**.
 
-## Regla de carga sugerida (a validar)
+## Regla de carga sugerida
 
-Si la última vez el alumno llegó al tope del rango en todas las series (y, si registró RIR, con RIR 2 o más), se sugiere subir **2,5 kg**, o **1 kg** si la carga es menor a 10 kg. Si no, se repite la carga.
+El método: se trabaja en el rango de repeticiones del plan (por defecto, de **4 a 12** al agregar un ejercicio) y se sube la carga recién cuando el tope sale **cómodo, firme y sin pausas**.
+
+Si la última vez el alumno llegó al tope del rango en todas las series, **sin pausas** (y, si registró RIR, con RIR 2 o más), se sugiere subir **2,5 kg**, o **1 kg** si la carga es menor a 10 kg. Si no, se repite la carga.
+
+**Pausas:** al marcar cada serie, la barra de descanso pregunta si hubo pausas dentro de la serie (No, 1, 2, 3+). Si no se toca, cuenta como sin pausas. Quedan en la columna `pausas` de Registro. El botón ⓘ explica el método: ante el fallo, frenar unos 10 segundos para que el músculo recupere ATP y seguir; funciona, pero para subir la carga o de nivel las pausas tienen que ser cero.
 
 Si la sesión se editó desde la app **después** del último registro de ese ejercicio, manda la carga del plan (columna `actualizado` de Planes). Al abrir el editor, la carga ya muestra la que la app propondría, así que guardar sin tocarla no cambia nada.
 
-**Cambio de nivel (a validar):** si dos sesiones seguidas completó el tope con margen, la app sugiere subir la carga o pasar al nivel siguiente de la cadena. Si dos sesiones seguidas no llegó al mínimo de repeticiones, sugiere volver un nivel, aclarando que retroceder también es parte del proceso. Está en `sugerida()` e `incremento()` de `index.html`.
+**Cambio de nivel:** si dos sesiones seguidas completó el tope sin pausas, la app sugiere subir la carga o pasar al nivel siguiente de la cadena. Si dos sesiones seguidas no llegó al mínimo de repeticiones, sugiere volver un nivel, aclarando que retroceder también es parte del proceso. Está en `sugerida()` e `incremento()` de `index.html`.
 
 ## Datos sensibles
 

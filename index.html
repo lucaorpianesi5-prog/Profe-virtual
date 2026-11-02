@@ -832,6 +832,7 @@ button:active{transition:transform .1s}
           <div class="desc-row"><div class="desc-t" id="desc-t">2:30</div><div class="desc-lbl" id="desc-lbl"></div><button class="desc-b" id="desc-mas">+15s</button><button class="desc-b" id="desc-skip">Saltar</button></div>
           <div class="rir" id="rir" hidden><span class="esf-lbl">RIR<button class="info-b" data-info="rir" aria-label="¿Qué es el RIR?"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></button></span><button data-r="0">0</button><button data-r="1">1</button><button data-r="2">2</button><button data-r="3">3</button><button data-r="4">4+</button></div>
           <div class="rir rpe" id="rpe" hidden><span class="esf-lbl">RPE<button class="info-b" data-info="rpe" aria-label="¿Qué es el RPE?"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></button></span><button data-p="6"><b>6</b><small>fácil</small></button><button data-p="7"><b>7</b><small>moderado</small></button><button data-p="8"><b>8</b><small>duro</small></button><button data-p="9"><b>9</b><small>muy duro</small></button><button data-p="10"><b>10</b><small>máximo</small></button></div>
+          <div class="rir" id="pau"><span class="esf-lbl">Pausas<button class="info-b" data-info="pausas" aria-label="¿Qué son las pausas?"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg></button></span><button data-z="0">No</button><button data-z="1">1</button><button data-z="2">2</button><button data-z="3">3+</button></div>
           <div class="desc-prog" id="desc-prog"></div></div>
         <div class="foot"><div class="foot-row"><button class="btn sec" id="ses-prev" aria-label="Ejercicio anterior"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg></button><button class="btn" id="ses-sig">Siguiente ejercicio</button></div></div>
       </div>
@@ -1282,7 +1283,7 @@ function ultimaVez(e){
 }
 function lastSets(e){
   if(!REAL)return Array.from({length:e.s},(_,j)=>({kg:e.kg,reps:(j===e.s-1&&e.r[1]>6)?e.r[1]-1:e.r[1]}));
-  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir,id:s.id})):[];
+  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir,pausas:s.pausas,id:s.id})):[];
 }
 /* Últimas sesiones de un ejercicio (de la más nueva a la más vieja), cada una con sus series */
 function sesionesDe(n,cuantas){
@@ -1295,9 +1296,9 @@ function sesionesDe(n,cuantas){
 function consejo(e){
   if(!REAL)return null;
   const u=sesionesDe(e.n,2); if(u.length<2)return null;
-  const tope=x=>x.s.length>=e.s&&x.s.every(s=>(s.reps||0)>=e.r[1]&&(s.rir==null||s.rir>=2));
+  const tope=x=>x.s.length>=e.s&&x.s.every(s=>serieTope(e,s));
   const bajo=x=>x.s.some(s=>(s.reps||0)<e.r[0]);
-  if(u.every(tope)&&e.prog)return {tipo:'prog',html:`Hace 2 sesiones que completás el tope con margen. Podés subir la carga o pasar a <b>${esc(e.prog)}</b>.`};
+  if(u.every(tope)&&e.prog)return {tipo:'prog',html:`Hace 2 sesiones que completás el tope firme y sin pausas. Podés subir la carga o pasar a <b>${esc(e.prog)}</b>.`};
   if(u.every(bajo)&&e.reg)return {tipo:'reg',html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
   return null;
 }
@@ -1308,6 +1309,8 @@ const mejorKg=e=>REAL?Math.max(0,...S.hist.filter(h=>h.ej===e.n).map(h=>h.kg||0)
    (con RIR 2 o más, si lo registraste), se sugiere subir. Con cargas chicas el salto es de 1 kg. */
 const incremento=kg=>kg<10?1:2.5;
 const kEj=n=>String(n||'').trim().toLowerCase();
+/* Serie "al tope": llegó al máximo del rango, con margen si se anotó RIR, y sin pausas */
+const serieTope=(e,s)=>(s.reps||0)>=e.r[1]&&(s.rir==null||s.rir>=2)&&!(s.pausas>0);
 const progDe=e=>REAL&&S.prog?S.prog[kEj(e.n)]||null:null;
 /* Cuándo se guardó la última sesión con este ejercicio (para saber si el plan se editó después) */
 function tsUltima(e){
@@ -1321,7 +1324,7 @@ function sugerida(e){
   const ls_=lastSets(e);
   if(!ls_.length){ const p=progDe(e); return p&&p.uk?p.uk:(e.kg||0) }
   const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return e.kg||0;
-  const tope=ls_.length>=e.s&&ls_.every(s=>s.reps>=e.r[1]&&(s.rir==null||s.rir>=2));
+  const tope=ls_.length>=e.s&&ls_.every(s=>serieTope(e,s));
   return tope?+(max+incremento(max)).toFixed(1):max;
 }
 function tecHTML(e){
@@ -1515,7 +1518,9 @@ function nivelesActuales(){
   (S.cadenas||[]).forEach((c,ci)=>{let mejor='',cual=null;c.ej.forEach(n=>{const f=ult(n);if(f&&f>=mejor){mejor=f;cual=n}});if(cual)aca[ci]=cual});
   return aca;
 }
-const patronesBib=()=>[...new Set((S.cadenas||[]).map(c=>c.pat).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+/* Patrones en el orden de la lista de Luca; los que no tienen ejercicios en la Biblioteca no se muestran */
+const patronesBib=()=>{const hay=new Set((S.cadenas||[]).map(c=>c.pat).filter(Boolean)), orden=S.patrones||[];
+  return [...orden.filter(p=>hay.has(p)),...[...hay].filter(p=>!orden.includes(p)).sort((a,b)=>a.localeCompare(b))]};
 /* Buscador de la Biblioteca: agrupado por patrón, con filtro por enfoque; también acepta un nombre que no esté */
 function elegirEjercicio(i,patIni){
   const aca=nivelesActuales(), items=[], visto=new Set();
@@ -1524,6 +1529,8 @@ function elegirEjercicio(i,patIni){
   Object.values(S.cat).forEach(c=>otro(c.n,c.pat||'Catálogo'));
   if(!REAL){Object.entries(ALT).forEach(([pat,l])=>l.forEach(([n])=>otro(n,pat)));Object.values(S.plan).forEach(p=>p.ej.forEach(e=>otro(e.n,e.pat||'')))}
   (S.hist||[]).forEach(h=>otro(h.ej,'Registrado antes'));
+  const orden=patronesBib(), pos=x=>{const k=orden.indexOf(x.pat);return x.pat==='Otros'?999:k<0?500:k};
+  items.sort((a,b)=>pos(a)-pos(b));   // agrupado por patrón, en el orden de la lista (sort estable: respeta el orden de las cadenas)
   const enfs=[...new Set(items.map(x=>x.enf).filter(Boolean))];
   let enf='', pat=patIni||'';
   const info=x=>x.niv?`${x.aca?'<small class="aca">Estás acá · ':'<small>'}Nivel ${x.niv} de ${x.tot}${x.enf&&!enf?' · '+esc(x.enf):''}</small>`:`<small>${esc(x.d||'')}</small>`;
@@ -1549,8 +1556,8 @@ function elegirEjercicio(i,patIni){
       if(e.target.closest('[data-todos]')){pat='';pinta();return}
       const b=e.target.closest('[data-n]'); if(!b)return; const n=b.dataset.n.slice(0,80);
       if(i==null){
-        const kg=REAL?sugerida({n,s:3,r:[8,10],kg:0}):0;
-        AR.ej.push({n,s:'3',rmin:'8',rmax:'10',seg:false,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
+        const kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
+        AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
       } else AR.ej[i].n=n;
       marcar(); cerrar(); vibra(10); renderArmar();
       if(i==null)setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},60);
@@ -1681,7 +1688,15 @@ function explicaEsfuerzo(que,volver){
   const rpe=`<div class="porque"><div class="porque-tit">RPE · esfuerzo percibido (1 a 10)</div><div class="porque-txt ejemplo">Qué tan duro se sintió. 10 = máximo esfuerzo posible. 7 = exigente, pero con margen.</div><div class="porque-txt ejemplo" style="margin-top:.35rem"><b>Para qué sirve:</b> registra cómo te sentiste, no solo qué levantaste. El mismo peso puede sentirse 6 un día bien descansado y 9 después de dormir mal. Con el tiempo te enseña a leer tu cuerpo.</div></div>`;
   sheet(`<div class="sheet-col"><div><h3>¿Qué es esto?</h3><p class="sub">Es opcional: si no tocás nada, la serie se guarda igual.</p></div>${que==='rpe'?rpe+rir:rir+rpe}<button class="btn" id="ex-ok">${volver?'Volver':'Entendido'}</button></div>`,()=>{$('#ex-ok').onclick=volver||cerrar});
 }
-document.addEventListener('click',e=>{const i=e.target.closest('[data-info]'); if(i)explicaEsfuerzo(i.dataset.info)});
+document.addEventListener('click',e=>{const i=e.target.closest('[data-info]'); if(i)(i.dataset.info==='pausas'?explicaPausas:explicaEsfuerzo)(i.dataset.info)});
+/* Pausas dentro de la serie (rest-pause): sirven para completar el volumen, pero para subir hay que lograrlo sin pausas */
+const TXT_METODO='Trabajá en el rango de repeticiones de tu plan (por ejemplo, de 4 a 12). <b>Subí la carga</b> recién cuando completás el tope en todas las series de forma cómoda, firme y <b>sin pausas</b> entre repeticiones.';
+function explicaPausas(){
+  sheet(`<div class="sheet-col"><div><h3>Pausas dentro de la serie</h3><p class="sub">Anotá si tuviste que frenar durante la serie. Si no tocás nada, cuenta como sin pausas.</p></div>
+   <div class="porque"><div class="porque-tit">Cómo se usan</div><div class="porque-txt">Si llegás al fallo antes de completar las repeticiones, podés frenar unos <b>10 segundos</b>, sin soltar la posición si se puede, y seguir. En ese tiempo el músculo recupera parte de su energía inmediata (ATP) y te permite sumar repeticiones de calidad.</div></div>
+   <div class="porque"><div class="porque-tit">Para avanzar</div><div class="porque-txt">Es un método que funciona, pero para subir la carga o pasar al nivel siguiente, <b>las pausas tienen que ser cero</b>: el tope de repeticiones tiene que salir de corrido. ${TXT_METODO}</div></div>
+   <button class="btn" onclick="cerrar()">Entendido</button></div>`);
+}
 function sheetEsfuerzo(origen){
   S.pref.avisoVisto=true; ls.set('pv-aviso',1);
   const ops=[['nada','Nada','Solo carga y repeticiones.'],['rir','RIR','Cuántas repeticiones te sobraron, en cada serie.'],['rpe','RPE','Qué tan duro se sintió, en cada serie.'],['ambos','Ambos',CFG_AMBOS_RPE==='sesion'?'RIR en cada serie y RPE al cerrar la sesión.':'RIR y RPE en cada serie.']];
@@ -1697,7 +1712,7 @@ function sheetEsfuerzo(origen){
 }
 function pintaEsfuerzo(){
   $('#rir').hidden=!hayRirSerie(); $('#rpe').hidden=!hayRpeSerie();
-  $$('.nota-prog').forEach(n=>n.textContent='Mantené apretado un − o un + para cambiar rápido. '+(hayRirSerie()?'Si completás el tope de repeticiones en todas las series con RIR 2 o más, la próxima vez te sugerimos subir.':'Si completás el tope de repeticiones en todas las series con margen, la próxima vez te sugerimos subir.'));
+  $$('.nota-prog').forEach(n=>n.textContent='Mantené apretado un − o un + para cambiar rápido. Si completás el tope de repeticiones en todas las series, firme y sin pausas'+(hayRirSerie()?' (RIR 2 o más)':'')+', la próxima vez te sugerimos subir la carga.');
 }
 
 /* ───────── Progreso ───────── */
@@ -1863,7 +1878,7 @@ $('#pager').addEventListener('click',e=>{
         Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog});
         pg.querySelector('.ej-nombre').textContent=ex.n; pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex); guardaSesLocal();
       };
-      const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, con buena técnica y margen, dos sesiones seguidas. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;
+      const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, firme y <b>sin pausas</b>, dos sesiones seguidas. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;
       sheet(cad?`<div class="sheet-col"><div><h3>${esc(cad.pat||'Progresión')}${cad.enf?' · '+esc(cad.enf):''}</h3><p class="sub">De lo más simple a lo más exigente. Tocá un nivel para cambiar ${esc(ex.n)} en esta sesión.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op cad-op ${x[0]===ex.n?'aca':''}" data-n="${esc(x[0])}"><span><b class="num">${x[2]+1}</b>${esc(x[0])}</span><small>${x[1]}</small></button>`).join('')}</div>${guia}</div>`
         :`<div class="sheet-col"><div><h3>${act==='reg'?'Regresión':'Progresión'}</h3><p class="sub">Cambiá ${ex.n} por el eslabón vecino del mismo patrón.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op" data-n="${x[0]}"><span>${x[0]}</span><small>${x[1]}</small></button>`).join('')}</div>${REAL?guia:''}</div>`,()=>{
         $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{if(b.dataset.n===ex.n){cerrar();return}const ant={...ex};poner(b.dataset.n);cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{Object.assign(ex,ant);pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex);guardaSesLocal()})});
@@ -1955,6 +1970,7 @@ function descanso(ex,j,c,sg){
   pintaEsfuerzo();
   $$('#rir button[data-r]').forEach(b=>b.classList.toggle('sel',+b.dataset.r===ex.sets[j].rir));
   $$('#rpe button[data-p]').forEach(b=>b.classList.toggle('sel',+b.dataset.p===ex.sets[j].rpe));
+  $$('#pau button[data-z]').forEach(b=>b.classList.toggle('sel',+b.dataset.z===(ex.sets[j].pausas||0)));
   clearInterval(tick);
   if(!(seg>0)){
     /* Sin pausa: si hay que anotar el esfuerzo, queda la barra sin cuenta regresiva; si no, solo el aviso */
@@ -1965,6 +1981,7 @@ function descanso(ex,j,c,sg){
   dTot=seg*1000; dEnd=Date.now()+dTot;
   $('#descanso').classList.add('on'); tick=setInterval(pintaDesc,250); pintaDesc();
 }
+$('#pau').addEventListener('click',e=>{const b=e.target.closest('button[data-z]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].pausas=+b.dataset.z;$$('#pau button[data-z]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 $('#rir').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rir=+b.dataset.r;$$('#rir button[data-r]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 $('#rpe').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rpe=+b.dataset.p;$$('#rpe button[data-p]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 function pintaDesc(){
@@ -1986,11 +2003,11 @@ function terminar(){
   contar($('#st-dur'),seg,v=>{v=Math.round(v);return Math.floor(v/60)+':'+String(v%60).padStart(2,'0')});
   $('#st-sem').textContent=new Set([...diasHechos(),HOY]).size+'/'+S.days.length;
   /* Doble progresión: tope del rango en todas las series; "con margen" = RIR 2 o más si se registró RIR */
-  const p=ses.ex[0], tope=p.sets.length&&p.sets.every(s=>s.done&&s.reps>=p.r[1]&&(s.rir==null||s.rir>=2));
+  const p=ses.ex[0], tope=p.sets.length&&p.sets.every(s=>s.done&&serieTope(p,s));
   const maxP=Math.max(0,...p.sets.filter(s=>s.done).map(s=>s.kg));
   $('#cierre-rpe').hidden=!hayRpeSesion(); ses.rpeSes=null;
   $('#rpe-ses').innerHTML=[6,7,8,9,10].map(n=>`<button data-v="${n}"><b>${n}</b><small>${RPE_PAL[n]}</small></button>`).join('');
-  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango${hayRirSerie()?' con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps con margen en todas y te sugerimos subir la carga.</span>`;
+  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
   vibra([30,60,30,60,80]);
 }
 $('#btn-listo').onclick=()=>{if(REAL&&S.ses)encolar(S.ses,true);renderApp();show('app','f')};
@@ -2041,11 +2058,11 @@ const MSJ={
 };
 const mensajeError=e=>(MSJ[e.code]||(()=>'No hay conexión con el registro de Luca. Probá de nuevo en un rato.'))(e);
 
-function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,patrones:S.patrones,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
   S.alumno=d.alumno; S.planCrudo=d.plan||[];
   S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
-  S.cadenas=d.cadenas||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
+  S.cadenas=d.cadenas||[]; S.patrones=d.patrones||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
   const dias=[...new Set((d.alumno.dias||'').split(',').map(x=>LET.indexOf(x.trim().toUpperCase())).filter(i=>i>=0))].sort((a,b)=>a-b);
@@ -2064,11 +2081,11 @@ const pendientes=()=>ls.get('pv-pend',[]).filter(p=>S.alumno&&p.para===S.alumno.
 function sumarLocal(p){
   if(S.sesiones.some(x=>x.id===p.sesion.id))return;
   S.sesiones.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,dur:p.sesion.duracion_min,series:p.series.length,rpe:p.sesion.rpe_sesion,g:p.sesion.fin||Date.now()});
-  p.series.forEach(x=>S.hist.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,ej:x.ej,serie:x.serie,kg:x.kg,reps:x.reps,rir:x.rir,rpe:x.rpe}));
+  p.series.forEach(x=>S.hist.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,ej:x.ej,serie:x.serie,kg:x.kg,reps:x.reps,rir:x.rir,rpe:x.rpe,pausas:x.pausas}));
 }
 function encolar(ses,avisar){
   ls.del('pv-ses');
-  const series=[]; ses.ex.forEach(e=>e.sets.forEach((s,j)=>{if(s.done)series.push({ej:e.n,serie:j+1,kg:s.kg,reps:s.reps,rir:s.rir,rpe:s.rpe})}));
+  const series=[]; ses.ex.forEach(e=>e.sets.forEach((s,j)=>{if(s.done)series.push({ej:e.n,serie:j+1,kg:s.kg,reps:s.reps,rir:s.rir,rpe:s.rpe,pausas:s.pausas||0})}));
   if(!series.length)return;   // no se registró ninguna serie: no hay nada que guardar
   const ci=ses.ci||{};
   const p={para:S.alumno.email,series,sesion:{id:ses.id,fecha:ses.fecha,sesion:ses.L,duracion_min:Math.max(1,Math.round(((ses.fin||Date.now())-ses.t0)/60000)),reducida:!!ses.reducida,fin:ses.fin||Date.now(),rpe_sesion:ses.rpeSes,sueno:ci.sueno,estres:ci.estres,energia:ci.energia}};

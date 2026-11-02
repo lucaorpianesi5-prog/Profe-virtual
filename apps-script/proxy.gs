@@ -13,6 +13,8 @@ const DIAS_TOKEN = 60;
 // Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
 // para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
 const PUEDEN_ARMAR = [];
+// Patrones de movimiento de la Biblioteca (lista desplegable en la columna "patron"; la app los muestra en este orden).
+const PATRONES = ['Bisagra de Cadera', 'Bisagra de Rodilla', 'Core', 'Tracción', 'Empuje', 'Tren superior', 'Tren inferior', 'Full body'];
 // Enfoques de la Biblioteca (lista desplegable en la columna "enfoque").
 const ENFOQUES = ['Fuerza', 'Amplitud de Movimiento', 'Activación', 'Potencia', 'Equilibrio y Coordinación', 'Resistencia'];
 // Cuántos niveles puede tener una cadena de la Biblioteca (de la regresión a la progresión).
@@ -27,7 +29,7 @@ const HOJAS = {
   Biblioteca: ['patron', 'enfoque'].concat(Array.from({ length: NIVELES }, (_, i) => 'nivel_' + (i + 1))),
   Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion'],
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
-  Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe'],
+  Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe', 'pausas'],
   Progresiones: ['email', 'ejercicio', 'patron', 'enfoque', 'nivel', 'primera_fecha', 'primera_carga', 'primeras_reps',
                  'ultima_fecha', 'ultima_carga', 'ultimas_reps', 'mejor_carga', 'sesiones']
 };
@@ -58,10 +60,11 @@ function configurar() {
   ['Sesiones', 'Registro'].forEach(n => lib.getSheetByName(n).getRange('B:B').setNumberFormat('@'));
   ['F:F', 'I:I'].forEach(c => lib.getSheetByName('Progresiones').getRange(c).setNumberFormat('@'));
   try {
-    const regla = SpreadsheetApp.newDataValidation().requireValueInList(ENFOQUES, true).setAllowInvalid(false)
-      .setHelpText('Elegí uno de los enfoques. Para sumar otro, agregalo en ENFOQUES al principio del proxy.').build();
-    lib.getSheetByName('Biblioteca').getRange('B2:B').setDataValidation(regla);
-  } catch (e) { Logger.log('No se pudo poner la lista de enfoques: ' + e); }
+    const lista = (valores, que) => SpreadsheetApp.newDataValidation().requireValueInList(valores, true).setAllowInvalid(false)
+      .setHelpText('Elegí uno de la lista. Para sumar otro, agregalo en ' + que + ' al principio del proxy y corré configurar.').build();
+    lib.getSheetByName('Biblioteca').getRange('A2:A').setDataValidation(lista(PATRONES, 'PATRONES'));
+    lib.getSheetByName('Biblioteca').getRange('B2:B').setDataValidation(lista(ENFOQUES, 'ENFOQUES'));
+  } catch (e) { Logger.log('No se pudieron poner las listas de patrón y enfoque: ' + e); }
 
   // Ejemplo para probar: vos como primer alumno, con un plan y un catálogo de muestra.
   const yo = Session.getEffectiveUser().getEmail();
@@ -129,12 +132,27 @@ function cadenasDesdeEjercicios() {
   Object.keys(nombre).filter(n => !ant[n]).forEach(ini => {
     const cad = [];
     for (let n = ini; n && !visto[n] && cad.length < NIVELES; n = sig[n]) { visto[n] = true; cad.push(n); }
-    const pat = cad.map(n => patron[n]).find(Boolean) || '';
+    const pat = patronNuevo(cad.map(n => patron[n]).find(Boolean) || '', cad.map(n => nombre[n]).join(' '));
     const fila = [pat, ''].concat(cad.map(n => nombre[n]));
     while (fila.length < HOJAS.Biblioteca.length) fila.push('');
     out.push(fila);
   });
   return out.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+}
+
+// Lleva un patrón viejo (o el nombre del ejercicio) a la lista PATRONES. Si no se reconoce, queda vacío para elegirlo.
+function patronNuevo(pat, ejercicios) {
+  const t = norm(pat + ' ' + ejercicios).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const ya = PATRONES.find(p => norm(p) === norm(pat));
+  if (ya) return ya;
+  if (/sentadilla|rodilla|prensa|extension de cuad/.test(t)) return 'Bisagra de Rodilla';
+  if (/bisagra|cadera|peso muerto|hip thrust|puente|buenos dias|swing/.test(t)) return 'Bisagra de Cadera';
+  if (/core|plancha|dead bug|abdominal|pallof/.test(t)) return 'Core';
+  if (/traccion|remo|jalon|dominada|face pull/.test(t)) return 'Tracción';
+  if (/empuje|press|flexion|fondos/.test(t)) return 'Empuje';
+  if (/unilateral|zancada|estocada|step|bulgara|gemelo|pierna/.test(t)) return 'Tren inferior';
+  if (/hombro|biceps|triceps|brazo|elevacion/.test(t)) return 'Tren superior';
+  return '';
 }
 
 // Rehace la hoja Progresiones a partir de todo el Registro (configurar la usa la primera vez; también está en el menú).
@@ -317,7 +335,7 @@ function datosDe(a) {
   const desde = fecha(new Date(Date.now() - SEMANAS_HISTORIAL * 7 * 864e5));
   const historial = filasFinales('Registro', 6000).filter(r => norm(r.email) === email && fecha(r.fecha) >= desde).map(r => ({
     id: txt(r.id_sesion), fecha: fecha(r.fecha), sesion: txt(r.sesion), ej: txt(r.ejercicio),
-    serie: num(r.serie), kg: num(r.carga_kg), reps: num(r.reps), rir: num(r.rir), rpe: num(r.rpe)
+    serie: num(r.serie), kg: num(r.carga_kg), reps: num(r.reps), rir: num(r.rir), rpe: num(r.rpe), pausas: num(r.pausas)
   }));
 
   return {
@@ -325,7 +343,7 @@ function datosDe(a) {
       email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
-    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, sesiones: ses, historial: historial,
+    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, sesiones: ses, historial: historial,
     progresiones: (libro().getSheetByName('Progresiones') ? filas('Progresiones') : []).filter(r => norm(r.email) === email).map(r => ({
       ej: txt(r.ejercicio), pf: fecha(r.primera_fecha), pk: num(r.primera_carga), pr: num(r.primeras_reps),
       uf: fecha(r.ultima_fecha), uk: num(r.ultima_carga), ur: num(r.ultimas_reps), mk: num(r.mejor_carga), n: num(r.sesiones)
@@ -349,7 +367,7 @@ function guardarSesion(email, s, series) {
     const f = /^\d{4}-\d{2}-\d{2}$/.test(String(s.fecha)) ? String(s.fecha) : fecha(new Date());
     hs.appendRow([celda(s.id), f, email, celda(s.sesion), num(s.duracion_min), series.length, s.reducida ? 'sí' : 'no',
       vacio(num(s.rpe_sesion)), vacio(num(s.sueno)), vacio(num(s.estres)), vacio(num(s.energia)), new Date()]);
-    const filasReg = series.map(x => [celda(s.id), f, email, celda(s.sesion), celda(x.ej), num(x.serie), num(x.kg), num(x.reps), vacio(num(x.rir)), vacio(num(x.rpe))]);
+    const filasReg = series.map(x => [celda(s.id), f, email, celda(s.sesion), celda(x.ej), num(x.serie), num(x.kg), num(x.reps), vacio(num(x.rir)), vacio(num(x.rpe)), vacio(num(x.pausas))]);
     if (filasReg.length) {
       const hr = hoja('Registro');
       hr.getRange(hr.getLastRow() + 1, 1, filasReg.length, filasReg[0].length).setValues(filasReg);
