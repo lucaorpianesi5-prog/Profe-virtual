@@ -1,5 +1,7 @@
 # Puesta en marcha con datos reales
 
+> Estado del proyecto, bugs, ideas y próximos pasos: [CONTINUIDAD.md](CONTINUIDAD.md).
+
 La app tiene dos modos:
 
 - **Demo** (como hasta ahora): datos de ejemplo, no guarda nada. Es lo que se ve mientras `CONFIG` en `index.html` está vacío, y siempre se puede abrir agregando `?demo` a la URL.
