@@ -117,9 +117,120 @@ function configurar() {
 
   // La hoja vacía que trae toda planilla nueva ya no hace falta.
   lib.getSheets().forEach(h => {
-    if (!HOJAS[h.getName()] && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
+    if (!HOJAS[h.getName()] && ['Listas', 'Panel', 'Planes_archivo'].indexOf(h.getName()) < 0 && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
+  });
+  // Ordenar la planilla: listas desplegables, Panel de alumnos y aviso en las hojas que escribe la app.
+  // Cada parte va por separado: si una falla, las demás se aplican igual (y la app no depende de ninguna).
+  [listasDesplegables, armarPanel, protegerHojasDeLaApp].forEach(f => {
+    try { f(lib); } catch (e) { Logger.log('No se pudo completar ' + f.name + ': ' + e); }
   });
   Logger.log('Listo. Hojas: ' + Object.keys(HOJAS).join(', ') + '. Alumno de prueba: ' + yo);
+}
+
+/* ───────── Orden de la planilla (los aplica configurar) ───────── */
+const ESTADOS = ['activo', 'vencido', 'pausa'];
+const UNIDADES = ['reps', 'seg', 'reps por lado', 'seg por lado'];
+
+// Letra de columna (1 → A, 27 → AA)
+function letra(n) { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; }
+// Letra de la columna que tiene ese encabezado en la hoja
+function colDe(h, nombre) {
+  const cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(c => txt(c));
+  const j = cab.indexOf(nombre);
+  if (j < 0) throw new Error('Falta la columna "' + nombre + '" en ' + h.getName());
+  return letra(j + 1);
+}
+function columnaEntera(h, nombre) { return h.getRange(colDe(h, nombre) + '2:' + colDe(h, nombre)); }
+
+// 1 y 2. Listas desplegables: ejercicios (desde la Biblioteca), estado de Alumnos y unidad de Planes.
+function listasDesplegables(lib) {
+  // Hoja oculta "Listas": todos los ejercicios de la Biblioteca, ordenados, para el desplegable.
+  let li = lib.getSheetByName('Listas');
+  if (!li) li = lib.insertSheet('Listas');
+  actualizarListas(lib);
+  li.hideSheet();
+  // Ejercicio: sugiere los de la Biblioteca. Avisa (sin bloquear) si se escribe uno que no está.
+  const ej = SpreadsheetApp.newDataValidation().requireValueInRange(li.getRange('A2:A'), true).setAllowInvalid(true)
+    .setHelpText('Elegí un ejercicio de la Biblioteca. Si no está, agregalo primero en la Biblioteca para que el nombre coincida en todas las hojas.').build();
+  columnaEntera(lib.getSheetByName('Planes'), 'ejercicio').setDataValidation(ej);
+  columnaEntera(lib.getSheetByName('Ejercicios'), 'ejercicio').setDataValidation(ej);
+  const lista = (valores, ayuda) => SpreadsheetApp.newDataValidation().requireValueInList(valores, true).setAllowInvalid(false).setHelpText(ayuda).build();
+  columnaEntera(lib.getSheetByName('Alumnos'), 'estado').setDataValidation(lista(ESTADOS, 'activo = entra a la app; vencido o pausa = queda afuera.'));
+  columnaEntera(lib.getSheetByName('Planes'), 'unidad').setDataValidation(lista(UNIDADES, 'reps o seg; "por lado" para los unilaterales.'));
+}
+
+// 3. Las hojas que escribe la app avisan antes de editarlas a mano (se puede seguir si se confirma).
+function protegerHojasDeLaApp(lib) {
+  ['Sesiones', 'Registro', 'Progresiones', 'Planes_archivo', 'Panel', 'Listas'].forEach(n => {
+    const h = lib.getSheetByName(n);
+    if (!h || h.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) return;
+    h.protect().setDescription('La escribe la app: editarla a mano puede romper datos.').setWarningOnly(true);
+  });
+}
+
+// Lista de ejercicios de la Biblioteca (hoja oculta Listas), escrita como valores: sin fórmulas.
+// Se rehace con configurar y cada vez que se edita la Biblioteca (onEdit).
+function actualizarListas(lib) {
+  const li = lib.getSheetByName('Listas'), bib = lib.getSheetByName('Biblioteca');
+  if (!li || !bib || bib.getLastRow() < 2) return;
+  const v = bib.getRange(1, 1, bib.getLastRow(), bib.getLastColumn()).getValues(), cab = v.shift().map(c => txt(c));
+  const cols = cab.map((c, j) => /^nivel_\d+$/.test(c) ? j : -1).filter(j => j >= 0), vistos = {}, nombres = [];
+  v.forEach(r => cols.forEach(j => { const n = txt(r[j]); if (n && !vistos[norm(n)]) { vistos[norm(n)] = true; nombres.push(n); } }));
+  nombres.sort((a, b) => a.localeCompare(b, 'es'));
+  if (li.getLastRow() > 0) li.getRange(1, 1, li.getLastRow(), 1).clearContent();
+  li.getRange(1, 1, nombres.length + 1, 1).setValues([['ejercicios (de la Biblioteca, no editar)']].concat(nombres.map(n => [n])));
+}
+
+// 4. Panel: una fila por alumno, calculada por el script y escrita como valores (sin fórmulas).
+// Se actualiza al abrir la planilla, al guardar cada sesión y con configurar.
+const PANEL_CAB = ['Alumno', 'Email', 'Estado', 'Días por semana', 'Última sesión', 'Días sin entrenar',
+  'Sesiones (últimos 30 días)', 'Constancia (4 semanas)', 'Vence', 'Días para vencer', 'Ejercicios registrados'];
+function armarPanel(lib) {
+  let p = lib.getSheetByName('Panel');
+  if (!p) p = lib.insertSheet('Panel', 0);
+  p.clear();
+  try { p.setConditionalFormatRules([]); } catch (e) {}
+  p.getRange(1, 1, 1, PANEL_CAB.length).setValues([PANEL_CAB]).setFontWeight('bold').setWrap(true);
+  p.setFrozenRows(1);
+  p.setColumnWidth(1, 150); p.setColumnWidth(2, 220);
+  actualizarPanel(lib);
+}
+function actualizarPanel(lib) {
+  const p = lib.getSheetByName('Panel');
+  if (!p) return;
+  const tz = lib.getSpreadsheetTimeZone(), iso = d => d instanceof Date ? Utilities.formatDate(d, tz, 'yyyy-MM-dd') : txt(d);
+  const hoy = iso(new Date());
+  const dias = (a, b) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 864e5);
+  const esIso = t => /^\d{4}-\d{2}-\d{2}$/.test(t);
+  const comoFecha = t => new Date(+t.slice(0, 4), +t.slice(5, 7) - 1, +t.slice(8, 10));
+  const leer = n => { const h = lib.getSheetByName(n); if (!h || h.getLastRow() < 2) return [];
+    const v = h.getRange(1, 1, h.getLastRow(), h.getLastColumn()).getValues(), cab = v.shift().map(c => txt(c));
+    return v.filter(r => r.some(c => c !== '')).map(r => { const o = {}; cab.forEach((c, j) => { if (c) o[c] = r[j]; }); return o; }); };
+  const ses = leer('Sesiones').map(r => ({ e: norm(r.email), f: iso(r.fecha) })).filter(x => esIso(x.f));
+  const prog = leer('Progresiones').map(r => norm(r.email));
+  const filasP = leer('Alumnos').filter(a => txt(a.email)).map(a => {
+    const e = norm(a.email), mias = ses.filter(x => x.e === e).map(x => x.f).sort();
+    const ult = mias.length ? mias[mias.length - 1] : '';
+    const nd = txt(a.dias) ? txt(a.dias).split(',').filter(x => x.trim()).length : '';
+    const en = n => mias.filter(f => dias(f, hoy) <= n).length;
+    const vence = iso(a.fecha_vencimiento);
+    return [txt(a.nombre), e, txt(a.estado || 'activo'), nd || '—', ult ? comoFecha(ult) : '—', ult ? dias(ult, hoy) : '',
+      en(30), nd ? Math.min(1, en(28) / (nd * 4)) : '', esIso(vence) ? comoFecha(vence) : (vence || ''), esIso(vence) ? dias(hoy, vence) : '',
+      prog.filter(x => x === e).length];
+  });
+  if (p.getLastRow() > 1) p.getRange(2, 1, p.getLastRow() - 1, PANEL_CAB.length).clearContent().setBackground(null);
+  if (filasP.length) {
+    p.getRange(2, 1, filasP.length, PANEL_CAB.length).setValues(filasP);
+    p.getRange(2, 5, filasP.length, 1).setNumberFormat('dd/mm/yyyy');
+    p.getRange(2, 9, filasP.length, 1).setNumberFormat('dd/mm/yyyy');
+    p.getRange(2, 8, filasP.length, 1).setNumberFormat('0%');
+    // Alertas: más de 7 días sin entrenar (amarillo) y suscripción que vence en 7 días o menos (rojo)
+    filasP.forEach((r, i) => {
+      if (typeof r[5] === 'number' && r[5] > 7) p.getRange(i + 2, 6).setBackground('#FCE8B2');
+      if (typeof r[9] === 'number' && r[9] <= 7) p.getRange(i + 2, 10).setBackground('#F4C7C3');
+    });
+  }
+  p.getRange('A1').setNote('Se actualiza solo: al abrir la planilla, cada vez que alguien guarda una sesión y con configurar. Última actualización: ' + Utilities.formatDate(new Date(), tz, 'dd/MM/yyyy HH:mm'));
 }
 
 // Arma cadenas (una fila por cadena) siguiendo regresion → ejercicio → progresion de la hoja Ejercicios.
@@ -180,8 +291,15 @@ function reconstruirProgresiones() {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Profe Virtual')
     .addItem('Configurar / reparar hojas', 'configurar')
+    .addItem('Actualizar Panel', 'actualizarPanelMenu')
     .addItem('Rehacer Progresiones desde Registro', 'reconstruirProgresiones')
     .addToUi();
+  try { actualizarPanel(SpreadsheetApp.getActive()); } catch (e) {}   // el Panel queda al día cada vez que abrís la planilla
+}
+function actualizarPanelMenu() { actualizarPanel(SpreadsheetApp.getActive()); }
+// Al editar la Biblioteca, la lista desplegable de ejercicios se actualiza sola.
+function onEdit(e) {
+  try { if (e && e.range && e.range.getSheet().getName() === 'Biblioteca') actualizarListas(e.source); } catch (err) {}
 }
 
 /* ───────── Entrada ───────── */
@@ -376,6 +494,7 @@ function guardarSesion(email, s, series) {
       const hr = hoja('Registro');
       hr.getRange(hr.getLastRow() + 1, 1, filasReg.length, filasReg[0].length).setValues(filasReg);
       actualizarProgresiones(email, f, series);
+      try { actualizarPanel(libro()); } catch (e) { /* el Panel es solo para Luca: si falla, la sesión igual queda guardada */ }
     }
     return { guardadas: filasReg.length };
   } finally {
