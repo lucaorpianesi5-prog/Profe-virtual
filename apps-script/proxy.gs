@@ -13,13 +13,25 @@ const DIAS_TOKEN = 60;
 // Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
 // para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
 const PUEDEN_ARMAR = [];
+// Patrones de movimiento de la Biblioteca (lista desplegable en la columna "patron"; la app los muestra en este orden).
+const PATRONES = ['Bisagra de Cadera', 'Bisagra de Rodilla', 'Core', 'Tracción', 'Empuje', 'Tren superior', 'Tren inferior', 'Full body'];
+// Enfoques de la Biblioteca (lista desplegable en la columna "enfoque").
+const ENFOQUES = ['Fuerza', 'Amplitud de Movimiento', 'Activación', 'Potencia', 'Equilibrio y Coordinación', 'Resistencia'];
+// Cuántos niveles puede tener una cadena de la Biblioteca (de la regresión a la progresión).
+const NIVELES = 8;
+// La app recibe solo el registro de las últimas semanas (para "última vez", carga sugerida y Progreso).
+// Lo anterior queda en la hoja Registro y resumido en Progresiones.
+const SEMANAS_HISTORIAL = 16;
 
 const HOJAS = {
   Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas'],
-  Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas', 'bloque'],
+  Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas', 'bloque', 'actualizado'],
+  Biblioteca: ['patron', 'enfoque'].concat(Array.from({ length: NIVELES }, (_, i) => 'nivel_' + (i + 1))),
   Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion'],
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
-  Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe']
+  Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe', 'pausas'],
+  Progresiones: ['email', 'ejercicio', 'patron', 'enfoque', 'nivel', 'primera_fecha', 'primera_carga', 'primeras_reps',
+                 'ultima_fecha', 'ultima_carga', 'ultimas_reps', 'mejor_carga', 'sesiones']
 };
 
 /* ───────── Puesta en marcha ─────────
@@ -46,6 +58,13 @@ function configurar() {
   });
   // Las fechas que escribe la app quedan como texto (aaaa-mm-dd): así no cambian con la zona horaria.
   ['Sesiones', 'Registro'].forEach(n => lib.getSheetByName(n).getRange('B:B').setNumberFormat('@'));
+  ['F:F', 'I:I'].forEach(c => lib.getSheetByName('Progresiones').getRange(c).setNumberFormat('@'));
+  try {
+    const lista = (valores, que) => SpreadsheetApp.newDataValidation().requireValueInList(valores, true).setAllowInvalid(false)
+      .setHelpText('Elegí uno de la lista. Para sumar otro, agregalo en ' + que + ' al principio del proxy y corré configurar.').build();
+    lib.getSheetByName('Biblioteca').getRange('A2:A').setDataValidation(lista(PATRONES, 'PATRONES'));
+    lib.getSheetByName('Biblioteca').getRange('B2:B').setDataValidation(lista(ENFOQUES, 'ENFOQUES'));
+  } catch (e) { Logger.log('No se pudieron poner las listas de patrón y enfoque: ' + e); }
 
   // Ejemplo para probar: vos como primer alumno, con un plan y un catálogo de muestra.
   const yo = Session.getEffectiveUser().getEmail();
@@ -84,6 +103,15 @@ function configurar() {
     ejercicios.getRange(2, 1, e.length, e[0].length).setValues(e);
   }
 
+  // Biblioteca: la primera vez se arma sola siguiendo las regresiones y progresiones de Ejercicios.
+  const bib = lib.getSheetByName('Biblioteca');
+  if (bib.getLastRow() === 1) {
+    const cadenas = cadenasDesdeEjercicios();
+    if (cadenas.length) bib.getRange(2, 1, cadenas.length, HOJAS.Biblioteca.length).setValues(cadenas);
+  }
+  // Progresiones: la primera vez se completa con todo lo que ya está en Registro.
+  if (lib.getSheetByName('Progresiones').getLastRow() === 1) reconstruirProgresiones();
+
   // La hoja vacía que trae toda planilla nueva ya no hace falta.
   lib.getSheets().forEach(h => {
     if (!HOJAS[h.getName()] && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
@@ -91,9 +119,66 @@ function configurar() {
   Logger.log('Listo. Hojas: ' + Object.keys(HOJAS).join(', ') + '. Alumno de prueba: ' + yo);
 }
 
+// Arma cadenas (una fila por cadena) siguiendo regresion → ejercicio → progresion de la hoja Ejercicios.
+function cadenasDesdeEjercicios() {
+  const sig = {}, ant = {}, nombre = {}, patron = {};
+  const k = n => norm(n);
+  filas('Ejercicios').filter(r => r.ejercicio).forEach(r => {
+    const e = txt(r.ejercicio); nombre[k(e)] = e; if (r.patron) patron[k(e)] = txt(r.patron);
+    if (r.progresion) { const p = txt(r.progresion); nombre[k(p)] = nombre[k(p)] || p; if (!sig[k(e)]) { sig[k(e)] = k(p); ant[k(p)] = ant[k(p)] || k(e); } }
+    if (r.regresion) { const g = txt(r.regresion); nombre[k(g)] = nombre[k(g)] || g; if (!sig[k(g)]) { sig[k(g)] = k(e); ant[k(e)] = ant[k(e)] || k(g); } }
+  });
+  const visto = {}, out = [];
+  Object.keys(nombre).filter(n => !ant[n]).forEach(ini => {
+    const cad = [];
+    for (let n = ini; n && !visto[n] && cad.length < NIVELES; n = sig[n]) { visto[n] = true; cad.push(n); }
+    const pat = patronNuevo(cad.map(n => patron[n]).find(Boolean) || '', cad.map(n => nombre[n]).join(' '));
+    const fila = [pat, ''].concat(cad.map(n => nombre[n]));
+    while (fila.length < HOJAS.Biblioteca.length) fila.push('');
+    out.push(fila);
+  });
+  return out.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+}
+
+// Lleva un patrón viejo (o el nombre del ejercicio) a la lista PATRONES. Si no se reconoce, queda vacío para elegirlo.
+function patronNuevo(pat, ejercicios) {
+  const t = norm(pat + ' ' + ejercicios).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const ya = PATRONES.find(p => norm(p) === norm(pat));
+  if (ya) return ya;
+  if (/sentadilla|rodilla|prensa|extension de cuad/.test(t)) return 'Bisagra de Rodilla';
+  if (/bisagra|cadera|peso muerto|hip thrust|puente|buenos dias|swing/.test(t)) return 'Bisagra de Cadera';
+  if (/core|plancha|dead bug|abdominal|pallof/.test(t)) return 'Core';
+  if (/traccion|remo|jalon|dominada|face pull/.test(t)) return 'Tracción';
+  if (/empuje|press|flexion|fondos/.test(t)) return 'Empuje';
+  if (/unilateral|zancada|estocada|step|bulgara|gemelo|pierna/.test(t)) return 'Tren inferior';
+  if (/hombro|biceps|triceps|brazo|elevacion/.test(t)) return 'Tren superior';
+  return '';
+}
+
+// Rehace la hoja Progresiones a partir de todo el Registro (configurar la usa la primera vez; también está en el menú).
+function reconstruirProgresiones() {
+  const h = hoja('Progresiones');
+  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, h.getLastColumn()).clearContent();
+  const porSesion = {};
+  filas('Registro').forEach(r => {
+    const email = norm(r.email), ej = txt(r.ejercicio); if (!email || !ej) return;
+    const key = email + '|' + txt(r.id_sesion) + '|' + norm(ej);
+    (porSesion[key] = porSesion[key] || { email: email, ej: ej, f: fecha(r.fecha), series: [] }).series.push({ kg: num(r.carga_kg), reps: num(r.reps) });
+  });
+  const cat = catalogo().cat, mapa = {};
+  Object.keys(porSesion).map(k => porSesion[k]).sort((a, b) => a.f.localeCompare(b.f))
+    .forEach(x => plegar(mapa, x.email, x.ej, x.f, mejorSerie(x.series), cat));
+  const cab = HOJAS.Progresiones, v = Object.keys(mapa).map(k => cab.map(c => vacio(mapa[k][c])));
+  if (v.length) h.getRange(2, 1, v.length, cab.length).setValues(v);
+  Logger.log('Progresiones: ' + v.length + ' filas.');
+}
+
 // Menú "Profe Virtual" en la planilla (corre solo al abrirla, no desde el editor).
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu('Profe Virtual').addItem('Configurar / reparar hojas', 'configurar').addToUi();
+  SpreadsheetApp.getUi().createMenu('Profe Virtual')
+    .addItem('Configurar / reparar hojas', 'configurar')
+    .addItem('Rehacer Progresiones desde Registro', 'reconstruirProgresiones')
+    .addToUi();
 }
 
 /* ───────── Entrada ───────── */
@@ -185,17 +270,39 @@ function buscarAlumno(email) {
 }
 
 /* ───────── Lectura ───────── */
+// Catálogo: las cadenas de la Biblioteca (patrón, enfoque, nivel, regresión y progresión) + la ficha de técnica de
+// Ejercicios. Un ejercicio que no está en la Biblioteca conserva el patrón, la regresión y la progresión de su ficha.
+function catalogo() {
+  const fichas = {};
+  filas('Ejercicios').filter(r => r.ejercicio).forEach(r => {
+    fichas[norm(r.ejercicio)] = {
+      n: txt(r.ejercicio), pat: txt(r.patron), video: txt(r.video_url),
+      como: [r.como_1, r.como_2, r.como_3].map(txt).filter(Boolean),
+      err: txt(r.error_comun), mus: txt(r.musculos).split(',').map(x => x.trim()).filter(Boolean),
+      por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion)
+    };
+  });
+  const cat = {}, cadenas = [];
+  let bib = [];
+  try { bib = filas('Biblioteca'); } catch (e) { /* planilla sin Biblioteca todavía: queda el catálogo de Ejercicios */ }
+  bib.forEach(r => {
+    const ej = [];
+    for (let i = 1; i <= NIVELES; i++) { const n = txt(r['nivel_' + i]); if (n && !cat[norm(n)] && ej.indexOf(n) < 0) ej.push(n); }
+    if (!ej.length) return;
+    const c = cadenas.length;
+    cadenas.push({ pat: txt(r.patron), enf: txt(r.enfoque), ej: ej });
+    ej.forEach((n, i) => {
+      const f = fichas[norm(n)] || { n: n, video: '', como: [], err: '', mus: [], por: '' };
+      cat[norm(n)] = Object.assign({}, f, { n: n, pat: txt(r.patron) || f.pat || '', enf: txt(r.enfoque), cad: c, niv: i + 1, reg: ej[i - 1] || '', prog: ej[i + 1] || '' });
+    });
+  });
+  Object.keys(fichas).forEach(k => { if (!cat[k]) cat[k] = fichas[k]; });
+  return { cat: cat, cadenas: cadenas };
+}
+
 function datosDe(a) {
   const email = norm(a.email);
-
-  const catalogo = filas('Ejercicios').filter(r => r.ejercicio).map(r => ({
-    n: txt(r.ejercicio), pat: txt(r.patron), video: txt(r.video_url),
-    como: [r.como_1, r.como_2, r.como_3].map(txt).filter(Boolean),
-    err: txt(r.error_comun), mus: txt(r.musculos).split(',').map(x => x.trim()).filter(Boolean),
-    por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion)
-  }));
-  const cat = {};
-  catalogo.forEach(c => { cat[norm(c.n)] = c; });
+  const cc = catalogo(), cat = cc.cat;
 
   const sesiones = {};
   filas('Planes').filter(r => norm(r.email) === email && r.ejercicio).forEach(r => {
@@ -209,6 +316,7 @@ function datosDe(a) {
       n: txt(r.ejercicio), pat: c.pat || '',
       s: num(r.series) || 3, r: [rmin || rmax || 10, rmax || rmin || 10],
       seg: /^seg/i.test(txt(r.unidad)), d: desc == null ? 90 : desc, kg: num(r.carga_kg) || 0,
+      act: r.actualizado instanceof Date ? r.actualizado.getTime() : 0,   // cuándo se editó desde la app
       por: txt(r.por_que) || c.por || '', notas: txt(r.notas),
       b: txt(r.bloque).toUpperCase(), porPlan: txt(r.por_que),   // mismo bloque en filas seguidas = circuito
       video: c.video || '', como: c.como || [], err: c.err || '', mus: c.mus || [], reg: c.reg || '', prog: c.prog || ''
@@ -220,11 +328,14 @@ function datosDe(a) {
   });
 
   const ses = filas('Sesiones').filter(r => norm(r.email) === email).map(r => ({
-    id: txt(r.id_sesion), fecha: fecha(r.fecha), sesion: txt(r.sesion), dur: num(r.duracion_min), series: num(r.series), rpe: num(r.rpe_sesion)
+    id: txt(r.id_sesion), fecha: fecha(r.fecha), sesion: txt(r.sesion), dur: num(r.duracion_min), series: num(r.series), rpe: num(r.rpe_sesion),
+    g: r.guardada instanceof Date ? r.guardada.getTime() : 0
   }));
-  const historial = filas('Registro').filter(r => norm(r.email) === email).map(r => ({
+  // Registro solo de las últimas semanas, leyendo el final de la hoja (las filas se agregan en orden)
+  const desde = fecha(new Date(Date.now() - SEMANAS_HISTORIAL * 7 * 864e5));
+  const historial = filasFinales('Registro', 6000).filter(r => norm(r.email) === email && fecha(r.fecha) >= desde).map(r => ({
     id: txt(r.id_sesion), fecha: fecha(r.fecha), sesion: txt(r.sesion), ej: txt(r.ejercicio),
-    serie: num(r.serie), kg: num(r.carga_kg), reps: num(r.reps), rir: num(r.rir), rpe: num(r.rpe)
+    serie: num(r.serie), kg: num(r.carga_kg), reps: num(r.reps), rir: num(r.rir), rpe: num(r.rpe), pausas: num(r.pausas)
   }));
 
   return {
@@ -232,7 +343,11 @@ function datosDe(a) {
       email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
-    plan: plan, catalogo: catalogo, sesiones: ses, historial: historial
+    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, sesiones: ses, historial: historial,
+    progresiones: (libro().getSheetByName('Progresiones') ? filas('Progresiones') : []).filter(r => norm(r.email) === email).map(r => ({
+      ej: txt(r.ejercicio), pf: fecha(r.primera_fecha), pk: num(r.primera_carga), pr: num(r.primeras_reps),
+      uf: fecha(r.ultima_fecha), uk: num(r.ultima_carga), ur: num(r.ultimas_reps), mk: num(r.mejor_carga), n: num(r.sesiones)
+    }))
   };
 }
 
@@ -252,15 +367,57 @@ function guardarSesion(email, s, series) {
     const f = /^\d{4}-\d{2}-\d{2}$/.test(String(s.fecha)) ? String(s.fecha) : fecha(new Date());
     hs.appendRow([celda(s.id), f, email, celda(s.sesion), num(s.duracion_min), series.length, s.reducida ? 'sí' : 'no',
       vacio(num(s.rpe_sesion)), vacio(num(s.sueno)), vacio(num(s.estres)), vacio(num(s.energia)), new Date()]);
-    const filasReg = series.map(x => [celda(s.id), f, email, celda(s.sesion), celda(x.ej), num(x.serie), num(x.kg), num(x.reps), vacio(num(x.rir)), vacio(num(x.rpe))]);
+    const filasReg = series.map(x => [celda(s.id), f, email, celda(s.sesion), celda(x.ej), num(x.serie), num(x.kg), num(x.reps), vacio(num(x.rir)), vacio(num(x.rpe)), vacio(num(x.pausas))]);
     if (filasReg.length) {
       const hr = hoja('Registro');
       hr.getRange(hr.getLastRow() + 1, 1, filasReg.length, filasReg[0].length).setValues(filasReg);
+      actualizarProgresiones(email, f, series);
     }
     return { guardadas: filasReg.length };
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ───────── Progresiones: primera y última vez de cada ejercicio, por alumno ───────── */
+// La mejor serie de una sesión: la de más carga y, con esa carga, la de más repeticiones.
+function mejorSerie(series) {
+  let m = null;
+  series.forEach(x => {
+    const kg = num(x.kg) || 0, reps = num(x.reps) || 0;
+    if (!m || kg > m.kg || (kg === m.kg && reps > m.reps)) m = { kg: kg, reps: reps };
+  });
+  return m || { kg: 0, reps: 0 };
+}
+function plegar(mapa, email, ej, f, m, cat) {
+  const k = email + '|' + norm(ej), c = cat[norm(ej)] || {};
+  let p = mapa[k];
+  if (!p) {
+    p = mapa[k] = { email: email, ejercicio: ej, primera_fecha: f, primera_carga: m.kg, primeras_reps: m.reps,
+      ultima_fecha: f, ultima_carga: m.kg, ultimas_reps: m.reps, mejor_carga: m.kg, sesiones: 0 };
+  } else {
+    if (f < fecha(p.primera_fecha)) { p.primera_fecha = f; p.primera_carga = m.kg; p.primeras_reps = m.reps; }
+    if (f >= fecha(p.ultima_fecha)) { p.ultima_fecha = f; p.ultima_carga = m.kg; p.ultimas_reps = m.reps; }
+    p.mejor_carga = Math.max(num(p.mejor_carga) || 0, m.kg);
+  }
+  p.patron = c.pat || p.patron || ''; p.enfoque = c.enf || p.enfoque || ''; p.nivel = c.niv || p.nivel || '';
+  p.sesiones = (num(p.sesiones) || 0) + 1;
+  p._tocada = true;
+}
+function actualizarProgresiones(email, f, series) {
+  if (!libro().getSheetByName('Progresiones')) return;   // falta correr configurar: el Registro igual queda completo
+  const h = hoja('Progresiones'), cab = HOJAS.Progresiones, cat = catalogo().cat, mapa = {};
+  filas('Progresiones').filter(r => norm(r.email) === email).forEach(r => { mapa[email + '|' + norm(r.ejercicio)] = r; });
+  const porEj = {};
+  series.forEach(x => { if (txt(x.ej)) (porEj[norm(x.ej)] = porEj[norm(x.ej)] || { ej: txt(x.ej), s: [] }).s.push(x); });
+  Object.keys(porEj).forEach(k => plegar(mapa, email, porEj[k].ej, f, mejorSerie(porEj[k].s), cat));
+  const nuevas = [];
+  Object.keys(mapa).forEach(k => {
+    const p = mapa[k]; if (!p._tocada) return;
+    const fila = cab.map(c => c.indexOf('fecha') >= 0 ? fecha(p[c]) : vacio(p[c]));
+    if (p._fila) h.getRange(p._fila, 1, 1, cab.length).setValues([fila]); else nuevas.push(fila);
+  });
+  if (nuevas.length) h.getRange(h.getLastRow() + 1, 1, nuevas.length, cab.length).setValues(nuevas);
 }
 
 // Reemplaza (o borra, si ses es null) una sesión del plan del alumno. Antes, copia las filas anteriores
@@ -312,6 +469,7 @@ function reemplazarSesionPlan(email, letra, ses) {
         poner('carga_kg', Math.max(0, num(e.kg) || 0)); poner('notas', celda(e.notas).slice(0, 300));
         poner('por_que', celda(e.porPlan).slice(0, 500));
         poner('bloque', celda(e.b).toUpperCase().slice(0, 3));
+        poner('actualizado', new Date());   // así la carga que pusiste le gana a la sugerida hasta que vuelvas a entrenar
         return fila;
       });
       h.getRange(h.getLastRow() + 1, 1, nuevas.length, cab.length).setValues(nuevas);
@@ -352,6 +510,16 @@ function filas(nombre) {
     out.push(o);
   });
   return out;
+}
+// Las últimas n filas de una hoja como objetos (para no leer todo el Registro en cada pedido).
+function filasFinales(nombre, n) {
+  const h = hoja(nombre), ult = h.getLastRow();
+  if (ult < 2) return [];
+  const cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(c => String(c).trim());
+  const desde = Math.max(2, ult - n + 1);
+  return h.getRange(desde, 1, ult - desde + 1, cab.length).getValues().filter(r => r.some(c => c !== '')).map(r => {
+    const o = {}; cab.forEach((c, j) => { if (c) o[c] = r[j]; }); return o;
+  });
 }
 function norm(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
 function txt(v) { return String(v == null ? '' : v).trim(); }
