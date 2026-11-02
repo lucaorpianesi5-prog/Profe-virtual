@@ -13,7 +13,7 @@ const DIAS_TOKEN = 60;
 
 const HOJAS = {
   Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas'],
-  Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas'],
+  Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas', 'bloque'],
   Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion'],
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
   Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe']
@@ -53,15 +53,15 @@ function configurar() {
   const planes = lib.getSheetByName('Planes');
   if (planes.getLastRow() === 1 && yo) {
     const p = [
-      ['A', 'Sentadilla y tracción', 1, 'Sentadilla goblet', 4, 6, 8, 'reps', 150, 20, '', ''],
-      ['A', '', 2, 'Remo con mancuerna', 3, 8, 10, 'reps', 120, 22.5, '', ''],
-      ['A', '', 3, 'Face pull', 3, 10, 12, 'reps', 90, 15, '', ''],
-      ['B', 'Empuje y bisagra', 1, 'Peso muerto rumano', 3, 6, 8, 'reps', 150, 60, '', ''],
-      ['B', '', 2, 'Press inclinado con mancuernas', 3, 8, 10, 'reps', 120, 22, '', ''],
-      ['B', '', 3, 'Plancha', 3, 30, 30, 'seg', 60, 0, '', 'Respirá normal durante toda la serie.'],
-      ['C', 'Unilateral y core', 1, 'Hip thrust', 3, 8, 10, 'reps', 120, 50, '', ''],
-      ['C', '', 2, 'Zancada búlgara', 3, 8, 8, 'reps', 120, 12, '', ''],
-      ['C', '', 3, 'Dead bug', 3, 10, 10, 'reps', 60, 0, '', '']
+      ['A', 'Sentadilla y tracción', 1, 'Sentadilla goblet', 4, 6, 8, 'reps', 150, 20, '', '', ''],
+      ['A', '', 2, 'Remo con mancuerna', 3, 8, 10, 'reps', 120, 22.5, '', '', ''],
+      ['A', '', 3, 'Face pull', 3, 10, 12, 'reps', 90, 15, '', '', ''],
+      ['B', 'Empuje y bisagra', 1, 'Peso muerto rumano', 3, 6, 8, 'reps', 150, 60, '', '', ''],
+      ['B', '', 2, 'Press inclinado con mancuernas', 3, 8, 10, 'reps', 120, 22, '', '', ''],
+      ['B', '', 3, 'Plancha', 3, 30, 30, 'seg', 60, 0, '', 'Respirá normal durante toda la serie.', ''],
+      ['C', 'Unilateral y core', 1, 'Hip thrust', 3, 8, 10, 'reps', 120, 50, '', '', ''],
+      ['C', '', 2, 'Zancada búlgara', 3, 8, 8, 'reps', 15, 12, '', 'Circuito: hacé una serie de cada ejercicio seguido y descansá al final de la vuelta.', 'C2'],
+      ['C', '', 3, 'Dead bug', 3, 10, 10, 'reps', 90, 0, '', '', 'C2']
     ].map(r => [yo].concat(r));
     planes.getRange(2, 1, p.length, p[0].length).setValues(p);
   }
@@ -189,13 +189,14 @@ function datosDe(a) {
     const s = sesiones[k] = sesiones[k] || { sesion: k, nombre: '', ejercicios: [] };
     if (!s.nombre && r.sesion_nombre) s.nombre = txt(r.sesion_nombre);
     const c = cat[norm(r.ejercicio)] || {};
-    const rmin = num(r.reps_min), rmax = num(r.reps_max);
+    const rmin = num(r.reps_min), rmax = num(r.reps_max), desc = num(r.descanso_seg);
     s.ejercicios.push({
       orden: num(r.orden) || s.ejercicios.length + 1,
       n: txt(r.ejercicio), pat: c.pat || '',
       s: num(r.series) || 3, r: [rmin || rmax || 10, rmax || rmin || 10],
-      seg: /^seg/i.test(txt(r.unidad)), d: num(r.descanso_seg) || 90, kg: num(r.carga_kg) || 0,
+      seg: /^seg/i.test(txt(r.unidad)), d: desc == null ? 90 : desc, kg: num(r.carga_kg) || 0,
       por: txt(r.por_que) || c.por || '', notas: txt(r.notas),
+      b: txt(r.bloque).toUpperCase(),   // mismo bloque en filas seguidas = circuito
       video: c.video || '', como: c.como || [], err: c.err || '', mus: c.mus || [], reg: c.reg || '', prog: c.prog || ''
     });
   });

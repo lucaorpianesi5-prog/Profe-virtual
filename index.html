@@ -428,6 +428,11 @@ button:active{transition:transform .1s}
 .serie.hecha .serie-ok{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento);transform:scale(1.05)}
 .serie.hecha .step{background:var(--acento-suave);border-color:var(--acento-borde)}
 .nota-chica{font-size:.7rem;color:var(--texto3);line-height:1.45}
+/* Circuitos: ejercicios del mismo bloque que se hacen seguidos, por vueltas */
+.circ-ind{display:inline-flex;align-items:center;gap:.4rem;margin-top:.4rem;font-size:.72rem;font-weight:700;color:var(--acento);background:var(--acento-suave);border:1px solid var(--acento-borde);border-radius:999px;padding:.3rem .7rem;font-variant-numeric:tabular-nums}
+.circ-ind span{color:var(--texto2);font-weight:600}
+.circ-h{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--acento);margin:.35rem 0 -.2rem .2rem}
+.ej-card.en-circ{border-left:3px solid var(--acento-borde)}
 .descanso{position:absolute;left:var(--gx);right:var(--gx);bottom:calc(var(--bot) + 76px);z-index:30;background:var(--barra);border:1px solid var(--acento-borde);border-radius:18px;padding:.75rem .9rem .9rem;display:flex;flex-direction:column;gap:.6rem;transform:translateY(200%);transition:transform .45s var(--ease);box-shadow:0 12px 30px rgba(0,0,0,.3);overflow:hidden}
 .descanso.on{transform:none}
 .desc-prog{position:absolute;left:0;bottom:0;height:3px;background:var(--acento);transition:width .25s linear}
@@ -887,8 +892,8 @@ const PLAN0={
   {n:'Peso muerto rumano',pat:'Bisagra de cadera',s:3,r:[6,8],d:150,kg:62.5,por:'Fortalece toda la cadena posterior, que es la que protege la zona lumbar cuando levantás cosas del piso.'},
   {n:'Press inclinado con mancuernas',pat:'Empuje horizontal',s:3,r:[8,10],d:120,kg:24,por:'Entrena el empuje con un rango de movimiento amplio y cada brazo por separado, lo que corrige diferencias entre lados.'},
   {n:'Zancada búlgara',pat:'Unilateral',s:3,r:[8,8],d:120,kg:14,por:'Trabaja una pierna a la vez: más equilibrio y menos exigencia sobre la espalda que la sentadilla pesada.'},
-  {n:'Elevaciones laterales',pat:'Hombro',s:3,r:[12,12],d:75,kg:6,por:'Un ejercicio simple y liviano para sostener hombros sanos sin cargar mucho las articulaciones.'},
-  {n:'Plancha',pat:'Core',s:3,r:[30,30],d:60,kg:0,por:'El core estabiliza todo lo que levantás: se entrena aguantando la posición, no solo flexionando.'}]},
+  {n:'Elevaciones laterales',pat:'Hombro',s:3,r:[12,12],d:15,kg:6,b:'B4',notas:'Circuito con la plancha: hacé una serie de cada uno seguido y descansá al final de la vuelta.',por:'Un ejercicio simple y liviano para sostener hombros sanos sin cargar mucho las articulaciones.'},
+  {n:'Plancha',pat:'Core',s:3,r:[30,30],d:90,kg:0,b:'B4',por:'El core estabiliza todo lo que levantás: se entrena aguantando la posición, no solo flexionando.'}]},
  C:{meta:'Unilateral y core',ej:[
   {n:'Hip thrust',pat:'Bisagra de cadera',s:3,r:[8,10],d:120,kg:50},
   {n:'Step-up',pat:'Unilateral',s:3,r:[10,10],d:90,kg:10},
@@ -1235,13 +1240,38 @@ function verVideo(e){
   sheet(`<div class="sheet-col"><h3>${e.n}</h3><div class="video-fake">${ico('play')}</div><p class="sub" style="margin:0">Abre el video en YouTube (no listado).</p><button class="btn" onclick="cerrar()">Cerrar</button></div>`);
 }
 const hayVideo=e=>!REAL||!!e.video;
+/* Circuitos: ejercicios seguidos con el mismo bloque (columna "bloque" de Planes) se hacen por vueltas.
+   Devuelve, por índice, {a,z,n} (primer y último índice del circuito, cantidad de vueltas) o null. */
+function circuitos(ej){
+  const out=ej.map(()=>null), bq=e=>String(e.b||'').trim().toUpperCase();
+  for(let i=0;i<ej.length;){
+    const b=bq(ej[i]); let k=i+1;
+    if(b)while(k<ej.length&&bq(ej[k])===b)k++;
+    if(b&&k-i>1){const c={a:i,z:k-1,n:Math.max(...ej.slice(i,k).map(e=>e.sets?e.sets.length:e.s))};for(let m=i;m<k;m++)out[m]=c}
+    i=k;
+  }
+  return out;
+}
+const hechas=e=>e.sets.filter(s=>s.done).length;
+/* Vuelta en curso de un circuito de la sesión: la más baja entre los ejercicios que todavía tienen series */
+function vuelta(c){
+  const pend=S.ses.ex.slice(c.a,c.z+1).filter(e=>e.sets.some(s=>!s.done));
+  return pend.length?Math.min(...pend.map(hechas))+1:c.n;
+}
+/* Después de marcar una serie del ejercicio i: a qué ejercicio pasar dentro del circuito */
+function sigCircuito(i,c){
+  const ex=S.ses.ex, pend=k=>ex[k].sets.some(s=>!s.done);
+  for(let k=i+1;k<=c.z;k++)if(pend(k)&&hechas(ex[k])<hechas(ex[i]))return {k,tipo:'cambio'};
+  for(let k=c.a;k<=c.z;k++)if(pend(k))return {k,tipo:'vuelta'};
+  return {k:c.z+1<ex.length?c.z+1:null,tipo:'fin'};
+}
 function renderMiPlan(){
   const sel=S.planDia, k=S.days.indexOf(sel), L=k>=0?S.letras[k]||null:null, pl=L&&S.plan[L], esHoy=sel===HOY, hechos=diasHechos();
   const hay=pl?pl.ej.reduce((a,e)=>a+e.s,0):0;
   $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${REAL?S.days.length+' días por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
   <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${hechos.has(i)?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${kk>=0?S.letras[kk]||'·':'·'}</b></button>`}).join('')}</div></div>
   <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series</div></div>
-  <div class="ej-cards">${pl.ej.map((e,i)=>`<div class="acordeon ej-card" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat?e.pat+' · ':''}${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.seg?' seg':''}</small><em>${lastSets(e).length?'Última vez: '+lastTxt(e):'Todavía sin registros'}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-pa="video">${ico('play')}Video</button>`:''}${REAL?'':`<button data-pa="cambiar">${ico('swap')}Cambiar</button>`}</div></div></div></div></div>`).join('')}</div>`
+  <div class="ej-cards">${(cs=>pl.ej.map((e,i)=>`${cs[i]&&cs[i].a===i?`<div class="circ-h">Circuito · ${cs[i].z-i+1} ejercicios · ${cs[i].n} vueltas</div>`:''}<div class="acordeon ej-card${cs[i]?' en-circ':''}" data-l="${L}" data-i="${i}"><button class="acordeon-h ej-h"><span class="ej-num">${i+1}</span><span class="ej-h-t"><b>${e.n}</b><small>${e.pat?e.pat+' · ':''}${e.s}×${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.seg?' seg':''}</small><em>${lastSets(e).length?'Última vez: '+lastTxt(e):'Todavía sin registros'}</em></span>${ico('chevd')}</button><div class="acordeon-c"><div><div class="ej-det">${tecHTML(e)}<div class="ej-acciones">${hayVideo(e)?`<button class="video" data-pa="video">${ico('play')}Video</button>`:''}${REAL?'':`<button data-pa="cambiar">${ico('swap')}Cambiar</button>`}</div></div></div></div></div>`).join(''))(circuitos(pl.ej))}</div>`
   :REAL&&!S.letras.length?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá.</div></div>`
   :`<div class="hoy-card"><div class="card-label">${DIAS_N[sel]}</div><div class="sesion-tit">Día de descanso ${ico('moon')}</div><div class="sesion-meta">El descanso también es entrenamiento: el músculo se adapta mientras descansás.</div></div>`}</div>`;
   $('#btn-dias').onclick=abrirDias;
@@ -1474,12 +1504,12 @@ function iniciar(reducida){
   if(!S.pref.avisoVisto)setTimeout(()=>{if($('#sesion').classList.contains('on'))sheetEsfuerzo('aviso')},1200);
 }
 function renderSesion(){
-  const ses=S.ses;
+  const ses=S.ses, cs=circuitos(ses.ex);
   $('#pager').innerHTML=ses.ex.map((e,i)=>`<div class="pg" data-i="${i}">
-   <div><div class="ej-patron">${e.pat}</div><div class="ej-nombre">${e.n}</div></div>
+   <div><div class="ej-patron">${e.pat}</div><div class="ej-nombre">${e.n}</div>${cs[i]?'<div class="circ-ind"></div>':''}</div>
    <div class="seg pg-seg"><span class="seg-ind"></span><button class="on" data-pane="reg">Registrar</button><button data-pane="tec">Técnica</button></div>
    <div class="pane pane-reg">
-     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">Descanso</div><div class="presc-val">${mmss(e.d)}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
+     <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
      ${lastSets(e).length?`<div class="ultima"><div><span class="u-l">Última vez · ${lastFecha(e)}</span><span class="u-v">${lastTxt(e)}</span></div><button class="u-b" data-a="repetir">Repetir</button></div>`
        :`<div class="ultima"><div><span class="u-l">Primera vez</span><span class="u-v">Elegí una carga cómoda y anotala</span></div></div>`}
      ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
@@ -1542,8 +1572,16 @@ $('#pager').addEventListener('click',e=>{
       const sig=ex.sets[j+1]; if(sig&&!sig.done){sig.kg=s.kg;sig.reps=s.reps}   // la próxima serie arranca con lo que acabás de hacer
       const mejor=mejorKg(ex);
       if(s.kg>mejor&&mejor>0&&!ex.pr){ex.pr=true;S.ses.prs++;setTimeout(()=>{snack('Nueva marca en '+ex.n+': '+fmt(s.kg)+' kg');vibra([20,50,20,50,80])},200)}
-      pintaSeries(i); descanso(ex,j); actualizaTop();
-      if(ex.sets.every(x=>x.done)&&S.ses.idx<S.ses.ex.length-1)setTimeout(()=>{if(!ex.pr)snack('Ejercicio completo. Deslizá para seguir')},300);
+      pintaSeries(i); const c=circuitos(S.ses.ex)[i];
+      if(c){
+        /* Circuito: pasa solo al siguiente ejercicio de la vuelta; el descanso largo va al final de la vuelta */
+        const sg=sigCircuito(i,c); descanso(ex,j,c,sg); actualizaTop();
+        if(sg.k!=null&&sg.k!==i)setTimeout(()=>{if(S.ses&&!S.ses.fin)irA(sg.k)},450);
+        if(sg.tipo==='fin')setTimeout(()=>{if(!ex.pr)snack('Circuito completo')},300);
+      } else {
+        descanso(ex,j); actualizaTop();
+        if(ex.sets.every(x=>x.done)&&S.ses.idx<S.ses.ex.length-1)setTimeout(()=>{if(!ex.pr)snack('Ejercicio completo. Deslizá para seguir')},300);
+      }
     } else { pintaSeries(i); actualizaTop(); }
     guardaSesLocal();
   }
@@ -1562,8 +1600,15 @@ function actualizaTop(){
   b.classList.toggle('sec',!hecho&&!ult);
   $('#ses-prev').disabled=ses.idx===0;
   $$('#pager .pg').forEach((p,k)=>p.classList.toggle('act',k===ses.idx));
-  $('#ses-lista').innerHTML=`<div class="card-label">Tu sesión</div>`+ses.ex.map((e,i)=>{const h=e.sets.filter(s=>s.done).length,ok=h===e.sets.length;return `<button class="sust-op ${i===ses.idx?'act':''}" data-i="${i}"><span>${ok?ico('check'):`<b class="num">${i+1}</b>`}${e.n}</span><small>${h}/${e.sets.length}</small></button>`}).join('');
+  const cs=circuitos(ses.ex);
+  $$('#pager .pg').forEach((p,k)=>{const c=cs[k],el=p.querySelector('.circ-ind'); if(c&&el){const v=vuelta(c),ok=ses.ex.slice(c.a,c.z+1).every(e=>e.sets.every(s=>s.done));el.innerHTML=ok?`Circuito completo ${ico('check')}`:`Circuito · vuelta ${v} de ${c.n} <span>· ${k-c.a+1} de ${c.z-c.a+1}</span>`}});
+  $('#ses-lista').innerHTML=`<div class="card-label">Tu sesión</div>`+listaSes(ses,cs,false);
   if(!ses.fin)guardaSesLocal();   // así, al retomar, vuelve al mismo ejercicio
+}
+/* Lista de ejercicios de la sesión (panel en iPad horizontal y vista general), con los circuitos agrupados */
+function listaSes(ses,cs,largo){
+  return ses.ex.map((e,i)=>{const h=hechas(e),ok=h===e.sets.length,c=cs[i];
+    return `${c&&c.a===i?`<div class="circ-h">Circuito · vuelta ${vuelta(c)} de ${c.n}</div>`:''}<button class="sust-op ${i===ses.idx?'act':''}" data-i="${i}"><span>${ok?ico('check'):`<b class="num">${i+1}</b>`}${e.n}</span><small>${h}/${e.sets.length}${largo?' series':''}</small></button>`}).join('');
 }
 function irA(i){
   if(dos()){ S.ses.idx=i; actualizaTop(); vibra(6) }
@@ -1575,7 +1620,7 @@ $('#ses-sig').onclick=()=>{ const ses=S.ses; if(ses.idx<ses.ex.length-1)irA(ses.
 /* Vista general: saltar a cualquier ejercicio */
 $('#ses-n').onclick=()=>{
   const ses=S.ses;
-  sheet(`<div class="sheet-col"><div><h3>Tu sesión</h3><p class="sub">Tocá un ejercicio para ir directo. Si la máquina está ocupada, hacelos en otro orden.</p></div><div class="lista-mas">${ses.ex.map((e,i)=>{const h=e.sets.filter(s=>s.done).length,ok=h===e.sets.length;return `<button class="sust-op ${i===ses.idx?'act':''}" data-i="${i}"><span>${ok?ico('check'):`<b class="num">${i+1}</b>`}${e.n}</span><small>${h}/${e.sets.length} series</small></button>`}).join('')}</div></div>`,()=>{
+  sheet(`<div class="sheet-col"><div><h3>Tu sesión</h3><p class="sub">Tocá un ejercicio para ir directo. Si la máquina está ocupada, hacelos en otro orden.</p></div><div class="lista-mas">${listaSes(ses,circuitos(ses.ex),true)}</div></div>`,()=>{
     $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{cerrar();irA(+b.dataset.i)});
   });
 };
@@ -1586,15 +1631,33 @@ $('#ses-salir').onclick=()=>sheet(`<div class="sheet-col"><div><h3>¿Salir de la
 }});
 /* Descanso con cuenta regresiva real + cuánto te sobró (RIR) */
 let dEnd=0,dTot=0;
-function descanso(ex,j){
+function descanso(ex,j,c,sg){
   const ses=S.ses, i=ses.ex.indexOf(ex); ses.cur={i,j};
-  dTot=ex.d*1000; dEnd=Date.now()+dTot;
-  const sig=ses.ex[i+1];
-  $('#desc-lbl').innerHTML=j<ex.sets.length-1?`Descansá<br><b>Sigue: serie ${j+2} de ${ex.sets.length}</b>`:(sig?`Ejercicio listo<br><b>Sigue: ${sig.n}</b>`:`Última serie<br><b>¡Casi terminás!</b>`);
+  let seg=ex.d, lbl;
+  if(c){
+    /* En un circuito, la pausa entre ejercicios es la del ejercicio; al cerrar la vuelta, la del último del circuito */
+    if(sg.tipo!=='cambio')seg=ses.ex[c.z].d;
+    const n=sg.k!=null?ses.ex[sg.k].n:'', v=vuelta(c);
+    lbl=sg.tipo==='cambio'?`Vuelta ${v} de ${c.n}<br><b>Sigue: ${n}</b>`
+      :sg.tipo==='vuelta'?`Vuelta ${v-1} lista · descansá<br><b>Sigue: vuelta ${v} de ${c.n} · ${n}</b>`
+      :n?`Circuito listo<br><b>Sigue: ${n}</b>`:`Última serie<br><b>¡Casi terminás!</b>`;
+  } else {
+    const sig=ses.ex[i+1];
+    lbl=j<ex.sets.length-1?`Descansá<br><b>Sigue: serie ${j+2} de ${ex.sets.length}</b>`:(sig?`Ejercicio listo<br><b>Sigue: ${sig.n}</b>`:`Última serie<br><b>¡Casi terminás!</b>`);
+  }
+  $('#desc-lbl').innerHTML=lbl;
   pintaEsfuerzo();
   $$('#rir button[data-r]').forEach(b=>b.classList.toggle('sel',+b.dataset.r===ex.sets[j].rir));
   $$('#rpe button[data-p]').forEach(b=>b.classList.toggle('sel',+b.dataset.p===ex.sets[j].rpe));
-  $('#descanso').classList.add('on'); clearInterval(tick); tick=setInterval(pintaDesc,250); pintaDesc();
+  clearInterval(tick);
+  if(!(seg>0)){
+    /* Sin pausa: si hay que anotar el esfuerzo, queda la barra sin cuenta regresiva; si no, solo el aviso */
+    if(hayRirSerie()||hayRpeSerie()){$('#desc-t').textContent='Ya';$('#desc-prog').style.width='100%';$('#descanso').classList.add('on')}
+    else{pararDescanso();snack($('#desc-lbl').textContent.replace(/^.*Sigue/,'Sigue'))}
+    return;
+  }
+  dTot=seg*1000; dEnd=Date.now()+dTot;
+  $('#descanso').classList.add('on'); tick=setInterval(pintaDesc,250); pintaDesc();
 }
 $('#rir').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rir=+b.dataset.r;$$('#rir button[data-r]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
 $('#rpe').addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b||!S.ses.cur)return;const {i,j}=S.ses.cur;S.ses.ex[i].sets[j].rpe=+b.dataset.p;$$('#rpe button[data-p]').forEach(x=>x.classList.toggle('sel',x===b));vibra(8);guardaSesLocal()});
