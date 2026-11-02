@@ -1290,16 +1290,27 @@ function sesionesDe(n,cuantas){
   const por={}; S.hist.filter(h=>h.ej===n).forEach(h=>{(por[h.id]=por[h.id]||{f:h.fecha,id:h.id,s:[]}).s.push(h)});
   return Object.values(por).sort((a,b)=>(b.f+b.id).localeCompare(a.f+a.id)).slice(0,cuantas);
 }
-/* Cuándo pasar al siguiente nivel o volver al anterior (a validar por Luca):
-   tope del rango en todas las series con margen, 2 sesiones seguidas → progresar; 
-   sin llegar al mínimo de repeticiones 2 sesiones seguidas → está bien retroceder un paso */
+/* Recomendación al empezar el ejercicio, según la última vez (el alumno siempre decide):
+   - tope en todas las series sin pausas → subir la carga (ya viene sugerida) o pasar al nivel siguiente;
+   - tope pero con pausas → lo óptimo es repetir la carga hasta lograrlo sin pausas, con opción de subir igual;
+   - 2 sesiones seguidas sin llegar al mínimo de repeticiones → está bien volver un nivel. */
 function consejo(e){
   if(!REAL)return null;
-  const u=sesionesDe(e.n,2); if(u.length<2)return null;
+  const u=sesionesDe(e.n,2), editado=e.act&&e.act>tsUltima(e);
+  const llega=s=>serieTope(e,{...s,pausas:0});
   const tope=x=>x.s.length>=e.s&&x.s.every(s=>serieTope(e,s));
+  const topeP=x=>x.s.length>=e.s&&x.s.every(llega)&&x.s.some(s=>s.pausas>0);
   const bajo=x=>x.s.some(s=>(s.reps||0)<e.r[0]);
-  if(u.every(tope)&&e.prog)return {tipo:'prog',html:`Hace 2 sesiones que completás el tope firme y sin pausas. Podés subir la carga o pasar a <b>${esc(e.prog)}</b>.`};
-  if(u.every(bajo)&&e.reg)return {tipo:'reg',html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
+  const prog=e.prog?esc(e.prog):'';
+  if(u[0]&&!editado){
+    const max=Math.max(0,...u[0].s.map(s=>s.kg||0)), sube=+(max+incremento(max)).toFixed(1);
+    if(tope(u[0])&&(max||prog))return {tipo:'prog',btn:prog?['prog','Ver la progresión']:null,
+      html:max?`La última vez completaste el tope sin pausas: hoy te sugerimos <b>${fmt(sube)} kg</b>.${prog?` También podés pasar a <b>${prog}</b>.`:''}`
+              :`La última vez completaste el tope sin pausas: podés pasar a <b>${prog}</b>.`};
+    if(topeP(u[0])&&(max||prog))return {tipo:'pausas',sube:max?sube:null,btn:max?['subir','Subir igual a '+fmt(sube)+' kg']:['prog','Ver la progresión igual'],
+      html:`La última vez llegaste al tope, pero con pausas. Lo más recomendable es ${max?`repetir <b>${fmt(max)} kg</b>`:'quedarte en este nivel'} hasta lograrlo sin pausas. Si igual querés ${max?'subir':'avanzar'}, es tu decisión.`};
+  }
+  if(u.length>=2&&u.every(bajo)&&e.reg)return {tipo:'reg',btn:['reg','Ver la regresión'],html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
   return null;
 }
 function lastTxt(e){const ls_=lastSets(e);return ls_.map(x=>(x.kg?fmt(x.kg)+'×':'')+x.reps).join(' · ')}
@@ -1820,7 +1831,7 @@ function renderSesion(){
    <div class="pane pane-reg">
      <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
      ${ultimaHTML(e)}
-     ${(c=>c?`<div class="consejo ${c.tipo==='reg'?'atras':''}">${ico(c.tipo==='reg'?'down':'up')}<div>${c.html}<button data-a="${c.tipo}">${c.tipo==='reg'?'Ver la regresión':'Ver la progresión'}</button></div></div>`:'')(consejo(e))}
+     ${(c=>c?`<div class="consejo ${c.tipo!=='prog'?'atras':''}">${ico(c.tipo==='reg'?'down':c.tipo==='pausas'?'info':'up')}<div>${c.html}${c.btn?`<button data-a="${c.btn[0]}">${c.btn[1]}</button>`:''}</div></div>`:'')(consejo(e))}
      ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
      <div class="series" data-i="${i}"></div>
      <div class="nota-chica nota-prog"></div>
@@ -1865,6 +1876,7 @@ $('#pager').addEventListener('click',e=>{
   if(a){
     const act=a.dataset.a;
     if(act==='video'){ verVideo(ex); }
+    else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done)s.kg=c.sube}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack('Carga: '+fmt(c.sube)+' kg. Si aparecen pausas, volvé a la anterior'); }
     else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
       let lista;
@@ -1878,7 +1890,7 @@ $('#pager').addEventListener('click',e=>{
         Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog});
         pg.querySelector('.ej-nombre').textContent=ex.n; pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex); guardaSesLocal();
       };
-      const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, firme y <b>sin pausas</b>, dos sesiones seguidas. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;
+      const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, firme y <b>sin pausas</b>. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;
       sheet(cad?`<div class="sheet-col"><div><h3>${esc(cad.pat||'Progresión')}${cad.enf?' · '+esc(cad.enf):''}</h3><p class="sub">De lo más simple a lo más exigente. Tocá un nivel para cambiar ${esc(ex.n)} en esta sesión.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op cad-op ${x[0]===ex.n?'aca':''}" data-n="${esc(x[0])}"><span><b class="num">${x[2]+1}</b>${esc(x[0])}</span><small>${x[1]}</small></button>`).join('')}</div>${guia}</div>`
         :`<div class="sheet-col"><div><h3>${act==='reg'?'Regresión':'Progresión'}</h3><p class="sub">Cambiá ${ex.n} por el eslabón vecino del mismo patrón.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op" data-n="${x[0]}"><span>${x[0]}</span><small>${x[1]}</small></button>`).join('')}</div>${REAL?guia:''}</div>`,()=>{
         $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{if(b.dataset.n===ex.n){cerrar();return}const ant={...ex};poner(b.dataset.n);cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{Object.assign(ex,ant);pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex);guardaSesLocal()})});
@@ -2004,10 +2016,11 @@ function terminar(){
   $('#st-sem').textContent=new Set([...diasHechos(),HOY]).size+'/'+S.days.length;
   /* Doble progresión: tope del rango en todas las series; "con margen" = RIR 2 o más si se registró RIR */
   const p=ses.ex[0], tope=p.sets.length&&p.sets.every(s=>s.done&&serieTope(p,s));
+  const topeP=!tope&&p.sets.length&&p.sets.every(s=>s.done&&serieTope(p,{...s,pausas:0}));
   const maxP=Math.max(0,...p.sets.filter(s=>s.done).map(s=>s.kg));
   $('#cierre-rpe').hidden=!hayRpeSesion(); ses.rpeSes=null;
   $('#rpe-ses').innerHTML=[6,7,8,9,10].map(n=>`<button data-v="${n}"><b>${n}</b><small>${RPE_PAL[n]}</small></button>`).join('');
-  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
+  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg</b>.</span>`:topeP?`${ico('info')}<span>En <b>${p.n.toLowerCase()}</b> llegaste al tope, pero con pausas. Lo óptimo es repetir la carga hasta lograrlo sin pausas; la próxima vez vas a poder elegir si subís igual.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
   vibra([30,60,30,60,80]);
 }
 $('#btn-listo').onclick=()=>{if(REAL&&S.ses)encolar(S.ses,true);renderApp();show('app','f')};

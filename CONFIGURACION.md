@@ -173,7 +173,12 @@ Si la última vez el alumno llegó al tope del rango en todas las series, **sin 
 
 Si la sesión se editó desde la app **después** del último registro de ese ejercicio, manda la carga del plan (columna `actualizado` de Planes). Al abrir el editor, la carga ya muestra la que la app propondría, así que guardar sin tocarla no cambia nada.
 
-**Cambio de nivel:** si dos sesiones seguidas completó el tope sin pausas, la app sugiere subir la carga o pasar al nivel siguiente de la cadena. Si dos sesiones seguidas no llegó al mínimo de repeticiones, sugiere volver un nivel, aclarando que retroceder también es parte del proceso. Está en `sugerida()` e `incremento()` de `index.html`.
+**Recomendación al empezar cada ejercicio** (el alumno siempre decide):
+- La última vez completó el tope en todas las series **sin pausas** → la carga ya viene subida, y si hay un nivel siguiente en la cadena se ofrece pasar a él.
+- Llegó al tope pero **con pausas** → la app recomienda repetir la carga hasta lograrlo sin pausas, con un botón **Subir igual** por si prefiere avanzar.
+- Dos sesiones seguidas sin llegar al mínimo de repeticiones → sugiere volver un nivel, aclarando que retroceder también es parte del proceso.
+
+**Pendiente:** algunos ejercicios necesitan más volumen de repeticiones antes de pasar de nivel (por ejemplo, de flexiones con rodillas a flexiones completas). Por ahora el rango se ajusta a mano en cada ejercicio del plan.
 
 ## Datos sensibles
 
