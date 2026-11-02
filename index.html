@@ -472,6 +472,25 @@ button:active{transition:transform .1s}
 .ar-link .ic{width:15px;height:15px}
 .ar-borrar{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;font-size:.8rem;font-weight:700;color:var(--rojo);margin-top:.4rem}
 .ar-borrar .ic{width:16px;height:16px}
+.consejo{display:flex;gap:.6rem;align-items:flex-start;background:var(--card2);border:1px solid var(--borde2);border-radius:14px;padding:.75rem .85rem;font-size:.8rem;line-height:1.5;color:var(--texto2)}
+.consejo>.ic{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:var(--acento)}
+.consejo.atras>.ic{color:var(--amber)}
+.consejo b{color:var(--texto)}
+.consejo button{display:block;margin-top:.35rem;min-height:40px;font-weight:700;color:var(--acento);font-size:.8rem}
+.u-ini{display:block;font-size:.7rem;color:var(--texto3);margin-top:.15rem}
+.cad-op{position:relative}
+.cad-op.aca{border-color:var(--acento);background:var(--acento-suave)}
+.cad-op .num{flex-shrink:0}
+.pk-enf{display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
+.pk-enf::-webkit-scrollbar{display:none}
+.pk-enf button{flex-shrink:0;min-height:38px;padding:0 .8rem;border-radius:999px;border:1px solid var(--borde2);background:var(--card);font-size:.74rem;font-weight:600;color:var(--texto2)}
+.pk-enf button.on{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento)}
+.pk-pat{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--texto3);font-weight:700;margin:.5rem 0 -.15rem .2rem}
+.sust-op small.aca{color:var(--acento);font-weight:700}
+.ar-pats{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem}
+.ar-pats button{display:flex;align-items:center;gap:.3rem;min-height:38px;padding:0 .75rem;border-radius:999px;border:1px dashed var(--borde2);font-size:.74rem;font-weight:600;color:var(--texto2)}
+.ar-pats button.ok{border-style:solid;border-color:var(--acento-borde);background:var(--acento-suave);color:var(--acento)}
+.ar-pats .ic{width:14px;height:14px}
 .ar-vacio{border:1.5px dashed var(--borde2);border-radius:var(--radio);padding:1.2rem;text-align:center;color:var(--texto2);font-size:.84rem;line-height:1.5}
 .descanso{position:absolute;left:var(--gx);right:var(--gx);bottom:calc(var(--bot) + 76px);z-index:30;background:var(--barra);border:1px solid var(--acento-borde);border-radius:18px;padding:.75rem .9rem .9rem;display:flex;flex-direction:column;gap:.6rem;transform:translateY(200%);transition:transform .45s var(--ease);box-shadow:0 12px 30px rgba(0,0,0,.3);overflow:hidden}
 .descanso.on{transform:none}
@@ -1263,7 +1282,24 @@ function ultimaVez(e){
 }
 function lastSets(e){
   if(!REAL)return Array.from({length:e.s},(_,j)=>({kg:e.kg,reps:(j===e.s-1&&e.r[1]>6)?e.r[1]-1:e.r[1]}));
-  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir})):[];
+  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir,id:s.id})):[];
+}
+/* Últimas sesiones de un ejercicio (de la más nueva a la más vieja), cada una con sus series */
+function sesionesDe(n,cuantas){
+  const por={}; S.hist.filter(h=>h.ej===n).forEach(h=>{(por[h.id]=por[h.id]||{f:h.fecha,id:h.id,s:[]}).s.push(h)});
+  return Object.values(por).sort((a,b)=>(b.f+b.id).localeCompare(a.f+a.id)).slice(0,cuantas);
+}
+/* Cuándo pasar al siguiente nivel o volver al anterior (a validar por Luca):
+   tope del rango en todas las series con margen, 2 sesiones seguidas → progresar; 
+   sin llegar al mínimo de repeticiones 2 sesiones seguidas → está bien retroceder un paso */
+function consejo(e){
+  if(!REAL)return null;
+  const u=sesionesDe(e.n,2); if(u.length<2)return null;
+  const tope=x=>x.s.length>=e.s&&x.s.every(s=>(s.reps||0)>=e.r[1]&&(s.rir==null||s.rir>=2));
+  const bajo=x=>x.s.some(s=>(s.reps||0)<e.r[0]);
+  if(u.every(tope)&&e.prog)return {tipo:'prog',html:`Hace 2 sesiones que completás el tope con margen. Podés subir la carga o pasar a <b>${esc(e.prog)}</b>.`};
+  if(u.every(bajo)&&e.reg)return {tipo:'reg',html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
+  return null;
 }
 function lastTxt(e){const ls_=lastSets(e);return ls_.map(x=>(x.kg?fmt(x.kg)+'×':'')+x.reps).join(' · ')}
 const lastFecha=e=>{if(!REAL)return '29/10';const u=ultimaVez(e);return u?ddmm(u.fecha):''};
@@ -1271,9 +1307,19 @@ const mejorKg=e=>REAL?Math.max(0,...S.hist.filter(h=>h.ej===e.n).map(h=>h.kg||0)
 /* Doble progresión (§8, a validar por Luca): si la última vez llegaste al tope del rango en todas las series
    (con RIR 2 o más, si lo registraste), se sugiere subir. Con cargas chicas el salto es de 1 kg. */
 const incremento=kg=>kg<10?1:2.5;
+const kEj=n=>String(n||'').trim().toLowerCase();
+const progDe=e=>REAL&&S.prog?S.prog[kEj(e.n)]||null:null;
+/* Cuándo se guardó la última sesión con este ejercicio (para saber si el plan se editó después) */
+function tsUltima(e){
+  const u=ultimaVez(e); if(!u)return 0;
+  const s=S.sesiones.find(x=>x.id===u.sets[0].id); return s&&s.g?s.g:0;
+}
 function sugerida(e){
   if(!REAL)return e.kg;
-  const ls_=lastSets(e); if(!ls_.length)return e.kg||0;
+  /* Caso A: si editaste la sesión después de tu último registro, manda la carga del plan */
+  if(e.act&&e.act>tsUltima(e))return e.kg||0;
+  const ls_=lastSets(e);
+  if(!ls_.length){ const p=progDe(e); return p&&p.uk?p.uk:(e.kg||0) }
   const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return e.kg||0;
   const tope=ls_.length>=e.s&&ls_.every(s=>s.reps>=e.r[1]&&(s.rir==null||s.rir>=2));
   return tope?+(max+incremento(max)).toFixed(1):max;
@@ -1382,7 +1428,7 @@ function abrirArmar(L){
   if(pl){
     const crudo=(S.planCrudo||[]).find(p=>p.sesion===L);
     AR={L,nuevo:false,nombre:crudo?crudo.nombre:(REAL?'':pl.meta),sucio:false,
-      ej:pl.ej.map(e=>({n:e.n,s:String(e.s),rmin:String(e.r[0]),rmax:String(e.r[1]),seg:!!e.seg||e.n==='Plancha',d:String(e.d),kg:e.kg?fmt(e.kg):'',b:e.b||'',notas:e.notas||'',porPlan:REAL?(e.porPlan||''):(e.por||'')}))};
+      ej:pl.ej.map(e=>({n:e.n,s:String(e.s),rmin:String(e.r[0]),rmax:String(e.r[1]),seg:!!e.seg||e.n==='Plancha',d:String(e.d),kg:(k=>k?fmt(k):'')(REAL?sugerida(e):e.kg),b:e.b||'',notas:e.notas||'',porPlan:REAL?(e.porPlan||''):(e.por||'')}))};
   } else {
     const libre=[...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].find(x=>!S.letras.includes(x));
     if(!libre){snack('Llegaste al máximo de sesiones');return}
@@ -1393,12 +1439,15 @@ function abrirArmar(L){
 function renderArmar(){
   const cs=circuitos(AR.ej.map(e=>({b:e.b,s:Math.max(1,numIn(e.s)||1)})));
   $('#ar-tit').textContent=AR.nuevo?'Sesión nueva':'Editar sesión '+AR.L;
+  const pats=patronesBib(), patDe=n=>{const c=enCatalogo(n);return c&&c.pat||''}, usados=AR.ej.map(e=>patDe(e.n));
   $('#ar-c').innerHTML=`<div class="card ar-cab"><div class="ar-letra">${AR.L}</div><label class="campo"><span>Nombre de la sesión (opcional)</span><input class="cin" id="ar-nom" maxlength="60" placeholder="Ej.: Fuerza tren inferior" value="${esc(AR.nombre)}"></label></div>
+   ${pats.length?`<div class="aviso">${ico('bulb')}<div><span>Una guía para empezar: <b>un ejercicio por patrón de movimiento</b> en cada sesión. Después armala como más te guste.</span><div class="ar-pats" id="ar-pats">${pats.map(x=>`<button data-pat="${esc(x)}" class="${usados.includes(x)?'ok':''}">${usados.includes(x)?ico('check'):ico('plus')}${esc(x)}</button>`).join('')}</div></div></div>`:''}
    <div class="card-label">Ejercicios${AR.ej.length?' · '+AR.ej.length:''}</div>
    ${AR.ej.length?'':`<div class="ar-vacio">Agregá el primer ejercicio. Si está en tu catálogo, trae la técnica y el video; si no, escribí el nombre igual.</div>`}
    ${AR.ej.map((e,i)=>{
-     const c=cs[i], cat=enCatalogo(e.n), ult=REAL?lastTxt({n:e.n}):'';
-     const hint=[cat?(cat.pat||'En tu catálogo'):'',ult?'Última vez: '+ult:''].filter(Boolean).join(' · ');
+     const c=cs[i], cat=enCatalogo(e.n), pr=progDe({n:e.n}), ult=REAL?(lastTxt({n:e.n})||(pr&&pr.uf?(pr.uk?fmt(pr.uk)+'×':'')+(pr.ur||0):'')):'';
+     const rep_=cat&&cat.pat&&usados.filter(x=>x===cat.pat).length>1;
+     const hint=[cat?(cat.pat||'En tu catálogo')+(cat.niv?' · nivel '+cat.niv:''):'',ult?'Última vez: '+ult:'',rep_?'otro ejercicio con el mismo patrón':''].filter(Boolean).join(' · ');
      const sig=AR.ej[i+1], unido=sig&&e.b&&sig.b===e.b;
      return `${c&&c.a===i?`<div class="circ-h">Circuito · ${c.z-c.a+1} ejercicios · ${c.n} vueltas</div>`:''}
      <div class="ar-ej${c?' en-circ':''}" data-i="${i}">
@@ -1430,6 +1479,7 @@ $('#ar-c').addEventListener('input',e=>{
 $('#ar-c').addEventListener('change',e=>{if(e.target.dataset.f==='s')renderArmar()});
 $('#ar-c').addEventListener('click',e=>{
   if(e.target.closest('#ar-add')){elegirEjercicio(null);return}
+  const pt=e.target.closest('[data-pat]'); if(pt){elegirEjercicio(null,pt.dataset.pat);return}
   if(e.target.closest('#ar-del')){borrarSesionPlan();return}
   const b=e.target.closest('[data-a]'); if(!b)return;
   const a=b.dataset.a;
@@ -1459,26 +1509,44 @@ function unir(i){
   marcar(); vibra(10); renderArmar();
 }
 function bloqueLibre(){const usados=new Set(AR.ej.map(e=>e.b));for(let n=1;;n++){const c=AR.L+n;if(!usados.has(c))return c}}
-/* Buscador del catálogo; también acepta un nombre que no esté */
-function elegirEjercicio(i){
-  const nombres=new Map();
-  Object.values(S.cat).forEach(c=>nombres.set(sinTilde(c.n),{n:c.n,d:c.pat||'Catálogo'}));
-  if(!REAL)Object.entries(ALT).forEach(([pat,l])=>l.forEach(([n])=>{if(!nombres.has(sinTilde(n)))nombres.set(sinTilde(n),{n,d:pat})}));
-  if(!REAL)Object.values(S.plan).forEach(p=>p.ej.forEach(e=>{if(!nombres.has(sinTilde(e.n)))nombres.set(sinTilde(e.n),{n:e.n,d:e.pat||''})}));
-  (S.hist||[]).forEach(h=>{if(h.ej&&!nombres.has(sinTilde(h.ej)))nombres.set(sinTilde(h.ej),{n:h.ej,d:'Registrado antes'})});
-  const todos=[...nombres.values()].sort((a,b)=>a.d.localeCompare(b.d)||a.n.localeCompare(b.n));
-  sheet(`<div class="sheet-col"><div><h3>${i==null?'Agregar ejercicio':'Cambiar '+esc(AR.ej[i].n)}</h3><p class="sub">Buscá en tu catálogo o escribí uno nuevo.</p></div><input class="cin" id="pk-q" placeholder="Buscar o escribir el nombre" autocomplete="off"><div class="lista-mas" id="pk-l"></div></div>`,()=>{
+/* Dónde está el alumno en cada cadena: el ejercicio de la cadena que hizo más recientemente */
+function nivelesActuales(){
+  const aca={}, ult=n=>{const p=S.prog&&S.prog[kEj(n)];const h=(S.hist||[]).filter(x=>x.ej===n).map(x=>x.fecha).sort().pop()||'';return [p&&p.uf||'',h].sort().pop()};
+  (S.cadenas||[]).forEach((c,ci)=>{let mejor='',cual=null;c.ej.forEach(n=>{const f=ult(n);if(f&&f>=mejor){mejor=f;cual=n}});if(cual)aca[ci]=cual});
+  return aca;
+}
+const patronesBib=()=>[...new Set((S.cadenas||[]).map(c=>c.pat).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+/* Buscador de la Biblioteca: agrupado por patrón, con filtro por enfoque; también acepta un nombre que no esté */
+function elegirEjercicio(i,patIni){
+  const aca=nivelesActuales(), items=[], visto=new Set();
+  (S.cadenas||[]).forEach((c,ci)=>c.ej.forEach((n,k)=>{visto.add(sinTilde(n));items.push({n,pat:c.pat||'Sin patrón',enf:c.enf||'',niv:k+1,tot:c.ej.length,aca:aca[ci]===n,ci})}));
+  const otro=(n,d)=>{if(!n||visto.has(sinTilde(n)))return;visto.add(sinTilde(n));items.push({n,pat:'Otros',enf:'',d})};
+  Object.values(S.cat).forEach(c=>otro(c.n,c.pat||'Catálogo'));
+  if(!REAL){Object.entries(ALT).forEach(([pat,l])=>l.forEach(([n])=>otro(n,pat)));Object.values(S.plan).forEach(p=>p.ej.forEach(e=>otro(e.n,e.pat||'')))}
+  (S.hist||[]).forEach(h=>otro(h.ej,'Registrado antes'));
+  const enfs=[...new Set(items.map(x=>x.enf).filter(Boolean))];
+  let enf='', pat=patIni||'';
+  const info=x=>x.niv?`${x.aca?'<small class="aca">Estás acá · ':'<small>'}Nivel ${x.niv} de ${x.tot}${x.enf&&!enf?' · '+esc(x.enf):''}</small>`:`<small>${esc(x.d||'')}</small>`;
+  sheet(`<div class="sheet-col"><div><h3>${i==null?'Agregar ejercicio':'Cambiar '+esc(AR.ej[i].n)}</h3><p class="sub">${patIni?'Ejercicios de <b style="color:var(--texto)">'+esc(patIni)+'</b>. ':''}Buscá en la Biblioteca o escribí uno nuevo.</p></div>
+    <input class="cin" id="pk-q" placeholder="Buscar o escribir el nombre" autocomplete="off">
+    ${enfs.length?`<div class="pk-enf" id="pk-enf"><button data-e="" class="on">Todos</button>${enfs.map(x=>`<button data-e="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}
+    <div class="lista-mas" id="pk-l"></div></div>`,()=>{
     const pinta=()=>{
       const q=$('#pk-q').value.trim(), k=sinTilde(q);
-      const l=todos.filter(x=>!k||sinTilde(x.n).includes(k)||sinTilde(x.d).includes(k)).slice(0,60);
-      const exacto=todos.some(x=>sinTilde(x.n)===k);
-      $('#pk-l').innerHTML=(q&&!exacto?`<button class="sust-op" data-n="${esc(q)}"><span>${ico('plus')}Usar «${esc(q)}»</span><small>No está en el catálogo</small></button>`:'')
-        +l.map(x=>`<button class="sust-op" data-n="${esc(x.n)}"><span>${esc(x.n)}</span><small>${esc(x.d)}</small></button>`).join('')
-        +(!l.length&&!q?'<p class="nota-chica">Tu catálogo está vacío: escribí el nombre del ejercicio.</p>':'');
+      let l=items.filter(x=>(!enf||x.enf===enf)&&(!pat||k||x.pat===pat)&&(!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)));
+      const exacto=items.some(x=>sinTilde(x.n)===k);
+      let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}"><span>${ico('plus')}Usar «${esc(q)}»</span><small>No está en la Biblioteca</small></button>`:'';
+      if(pat&&!k)html+=`<button class="sust-op" data-todos="1"><span>${ico('list')}Ver todos los patrones</span><small></small></button>`;
+      let grupo=null;
+      l.slice(0,120).forEach(x=>{ if(!k&&x.pat!==grupo){grupo=x.pat;html+=`<div class="pk-pat">${esc(grupo)}</div>`} html+=`<button class="sust-op" data-n="${esc(x.n)}"><span>${esc(x.n)}</span>${info(x)}</button>` });
+      if(!l.length&&!q)html+='<p class="nota-chica">No hay ejercicios con ese filtro: escribí el nombre para usar uno nuevo.</p>';
+      $('#pk-l').innerHTML=html;
     };
     $('#pk-q').addEventListener('input',pinta);
-    $('#pk-q').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#pk-l .sust-op');b&&b.click()}});
+    $('#pk-q').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#pk-l .sust-op[data-n]');b&&b.click()}});
+    if($('#pk-enf'))$('#pk-enf').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(!b)return;enf=b.dataset.e;$$('#pk-enf button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
     $('#pk-l').addEventListener('click',e=>{
+      if(e.target.closest('[data-todos]')){pat='';pinta();return}
       const b=e.target.closest('[data-n]'); if(!b)return; const n=b.dataset.n.slice(0,80);
       if(i==null){
         const kg=REAL?sugerida({n,s:3,r:[8,10],kg:0}):0;
@@ -1736,8 +1804,8 @@ function renderSesion(){
    <div class="seg pg-seg"><span class="seg-ind"></span><button class="on" data-pane="reg">Registrar</button><button data-pane="tec">Técnica</button></div>
    <div class="pane pane-reg">
      <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × reps</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
-     ${lastSets(e).length?`<div class="ultima"><div><span class="u-l">Última vez · ${lastFecha(e)}</span><span class="u-v">${lastTxt(e)}</span></div><button class="u-b" data-a="repetir">Repetir</button></div>`
-       :`<div class="ultima"><div><span class="u-l">Primera vez</span><span class="u-v">Elegí una carga cómoda y anotala</span></div></div>`}
+     ${ultimaHTML(e)}
+     ${(c=>c?`<div class="consejo ${c.tipo==='reg'?'atras':''}">${ico(c.tipo==='reg'?'down':'up')}<div>${c.html}<button data-a="${c.tipo}">${c.tipo==='reg'?'Ver la regresión':'Ver la progresión'}</button></div></div>`:'')(consejo(e))}
      ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
      <div class="series" data-i="${i}"></div>
      <div class="nota-chica nota-prog"></div>
@@ -1747,7 +1815,15 @@ function renderSesion(){
   ses.ex.forEach((_,i)=>pintaSeries(i));
   $('#pager').scrollLeft=0; ses.idx=0; actualizaTop(); pintaEsfuerzo();
 }
-/* Video, regresión y progresión. Con datos reales, regresión y progresión salen de la hoja Ejercicios */
+/* Última vez (del registro reciente o, si es más vieja, del resumen de Progresiones) y desde dónde empezaste */
+function ultimaHTML(e){
+  const p=progDe(e), kg=v=>v?fmt(v)+' kg':'sin carga';
+  const ini=p&&p.pf&&p.uf&&p.pf<p.uf?`<span class="u-ini">Empezaste con ${kg(p.pk)} × ${p.pr||0} el ${ddmm(p.pf)}</span>`:'';
+  if(lastSets(e).length)return `<div class="ultima"><div><span class="u-l">Última vez · ${lastFecha(e)}</span><span class="u-v">${lastTxt(e)}</span>${ini}</div><button class="u-b" data-a="repetir">Repetir</button></div>`;
+  if(p&&p.uf)return `<div class="ultima"><div><span class="u-l">Última vez · ${ddmm(p.uf)}</span><span class="u-v">${kg(p.uk)} × ${p.ur||0}</span>${ini}</div></div>`;
+  return `<div class="ultima"><div><span class="u-l">Primera vez</span><span class="u-v">Elegí una carga cómoda y anotala</span></div></div>`;
+}
+/* Video, regresión y progresión. Con datos reales salen de la cadena de la Biblioteca (o de la ficha de Ejercicios) */
 function accionesTec(e){
   const reg=!REAL||!!e.reg, prog=!REAL||!!e.prog;
   if(!hayVideo(e)&&!reg&&!prog)return '';
@@ -1777,7 +1853,9 @@ $('#pager').addEventListener('click',e=>{
     else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
       let lista;
-      if(REAL)lista=[[act==='reg'?ex.reg:ex.prog,act==='reg'?'más simple':'más exigente']].filter(x=>x[0]);
+      const cad=REAL&&S.cat[ex.n]&&S.cat[ex.n].cad!=null?S.cadenas[S.cat[ex.n].cad]:null;
+      if(cad)lista=cad.ej.map((n,k)=>{const d=k+1-S.cat[ex.n].niv;return [n,d===0?'estás acá':d<0?(d===-1?'más simple':'nivel '+(k+1)):(d===1?'más exigente':'nivel '+(k+1)),k]});
+      else if(REAL)lista=[[act==='reg'?ex.reg:ex.prog,act==='reg'?'más simple':'más exigente']].filter(x=>x[0]);
       else{ const alts=ALT[ex.pat]||[]; const ops=act==='reg'?alts.filter(x=>/simple|guiado|sin equipo/.test(x[1])):alts.filter(x=>/técnico|carga/.test(x[1])); lista=(ops.length?ops:alts).slice(0,2); }
       /* Cambia el ejercicio y trae su técnica y su video del catálogo, si están cargados */
       const poner=(nombre)=>{
@@ -1785,8 +1863,10 @@ $('#pager').addEventListener('click',e=>{
         Object.assign(ex,{n:c.n,pat:c.pat||ex.pat,video:c.video,como:c.como,err:c.err,mus:c.mus,por:c.por||ex.por,reg:c.reg,prog:c.prog});
         pg.querySelector('.ej-nombre').textContent=ex.n; pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex); guardaSesLocal();
       };
-      sheet(`<div class="sheet-col"><div><h3>${act==='reg'?'Regresión':'Progresión'}</h3><p class="sub">Cambiá ${ex.n} por el eslabón vecino del mismo patrón.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op" data-n="${x[0]}"><span>${x[0]}</span><small>${x[1]}</small></button>`).join('')}</div></div>`,()=>{
-        $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{const ant={...ex};poner(b.dataset.n);cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{Object.assign(ex,ant);pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex);guardaSesLocal()})});
+      const guia=`<div class="porque"><div class="porque-tit">Cuándo cambiar de nivel</div><div class="porque-txt"><b>Avanzá</b> cuando completás el tope de repeticiones en todas las series, con buena técnica y margen, dos sesiones seguidas. <b>Volvé un paso</b> si no llegás al mínimo, perdés la técnica o hay molestia. El entrenamiento no es lineal: a veces ir hacia atrás es lo que te permite seguir avanzando.</div></div>`;
+      sheet(cad?`<div class="sheet-col"><div><h3>${esc(cad.pat||'Progresión')}${cad.enf?' · '+esc(cad.enf):''}</h3><p class="sub">De lo más simple a lo más exigente. Tocá un nivel para cambiar ${esc(ex.n)} en esta sesión.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op cad-op ${x[0]===ex.n?'aca':''}" data-n="${esc(x[0])}"><span><b class="num">${x[2]+1}</b>${esc(x[0])}</span><small>${x[1]}</small></button>`).join('')}</div>${guia}</div>`
+        :`<div class="sheet-col"><div><h3>${act==='reg'?'Regresión':'Progresión'}</h3><p class="sub">Cambiá ${ex.n} por el eslabón vecino del mismo patrón.</p></div><div class="lista-mas">${lista.map(x=>`<button class="sust-op" data-n="${x[0]}"><span>${x[0]}</span><small>${x[1]}</small></button>`).join('')}</div>${REAL?guia:''}</div>`,()=>{
+        $$('#sheet-c .sust-op').forEach(b=>b.onclick=()=>{if(b.dataset.n===ex.n){cerrar();return}const ant={...ex};poner(b.dataset.n);cerrar();vibra(12);snack('Cambiado por '+ex.n,()=>{Object.assign(ex,ant);pg.querySelector('.ej-nombre').textContent=ex.n;pg.querySelector('.pane-tec').innerHTML=tecHTML(ex)+accionesTec(ex);guardaSesLocal()})});
       });
     }
     return;
@@ -1961,10 +2041,11 @@ const MSJ={
 };
 const mensajeError=e=>(MSJ[e.code]||(()=>'No hay conexión con el registro de Luca. Probá de nuevo en un rato.'))(e);
 
-function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),sesiones:S.sesiones,historial:S.hist}) }
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
   S.alumno=d.alumno; S.planCrudo=d.plan||[];
   S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
+  S.cadenas=d.cadenas||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
   const dias=[...new Set((d.alumno.dias||'').split(',').map(x=>LET.indexOf(x.trim().toUpperCase())).filter(i=>i>=0))].sort((a,b)=>a-b);
@@ -1982,7 +2063,7 @@ function aplicarDatos(d){
 const pendientes=()=>ls.get('pv-pend',[]).filter(p=>S.alumno&&p.para===S.alumno.email);
 function sumarLocal(p){
   if(S.sesiones.some(x=>x.id===p.sesion.id))return;
-  S.sesiones.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,dur:p.sesion.duracion_min,series:p.series.length,rpe:p.sesion.rpe_sesion});
+  S.sesiones.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,dur:p.sesion.duracion_min,series:p.series.length,rpe:p.sesion.rpe_sesion,g:p.sesion.fin||Date.now()});
   p.series.forEach(x=>S.hist.push({id:p.sesion.id,fecha:p.sesion.fecha,sesion:p.sesion.sesion,ej:x.ej,serie:x.serie,kg:x.kg,reps:x.reps,rir:x.rir,rpe:x.rpe}));
 }
 function encolar(ses,avisar){
@@ -1990,7 +2071,7 @@ function encolar(ses,avisar){
   const series=[]; ses.ex.forEach(e=>e.sets.forEach((s,j)=>{if(s.done)series.push({ej:e.n,serie:j+1,kg:s.kg,reps:s.reps,rir:s.rir,rpe:s.rpe})}));
   if(!series.length)return;   // no se registró ninguna serie: no hay nada que guardar
   const ci=ses.ci||{};
-  const p={para:S.alumno.email,series,sesion:{id:ses.id,fecha:ses.fecha,sesion:ses.L,duracion_min:Math.max(1,Math.round(((ses.fin||Date.now())-ses.t0)/60000)),reducida:!!ses.reducida,rpe_sesion:ses.rpeSes,sueno:ci.sueno,estres:ci.estres,energia:ci.energia}};
+  const p={para:S.alumno.email,series,sesion:{id:ses.id,fecha:ses.fecha,sesion:ses.L,duracion_min:Math.max(1,Math.round(((ses.fin||Date.now())-ses.t0)/60000)),reducida:!!ses.reducida,fin:ses.fin||Date.now(),rpe_sesion:ses.rpeSes,sueno:ci.sueno,estres:ci.estres,energia:ci.energia}};
   const todas=ls.get('pv-pend',[]); if(!todas.some(x=>x.sesion.id===p.sesion.id))todas.push(p); ls.set('pv-pend',todas);
   sumarLocal(p); guardaCache(); sincronizar(avisar);
 }

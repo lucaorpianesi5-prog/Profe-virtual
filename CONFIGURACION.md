@@ -135,22 +135,41 @@ Por ahora solo puede hacerlo **el dueño de la planilla**. Para habilitar a otra
 
 Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
-**Ejercicios**: tu catálogo, compartido por todos.
+**Biblioteca**: tus cadenas de progresión, compartidas por todos. Es la hoja que ordena el catálogo.
 
 | columna | qué va |
 |---|---|
-| `ejercicio` | nombre, igual que en Planes |
-| `patron` | por ejemplo "Bisagra de cadera" |
+| `patron` | patrón de movimiento, por ejemplo "Sentadilla" o "Bisagra de cadera" |
+| `enfoque` | se elige de la lista: Fuerza, Amplitud de Movimiento, Activación, Potencia, Equilibrio y Coordinación, Resistencia |
+| `nivel_1` … `nivel_8` | los ejercicios de la cadena, **de la regresión a la progresión**, de izquierda a derecha. Usá los que hagan falta |
+
+- Una fila por cadena. Cada ejercicio va en **una sola** cadena; si se repite, vale la primera.
+- La regresión y la progresión de cada ejercicio salen de sus vecinos en la fila: no hace falta cargarlas aparte.
+- Al armar una sesión, el buscador agrupa por patrón, filtra por enfoque y marca en qué nivel de cada cadena está el alumno.
+- La primera vez, `configurar` arma la Biblioteca sola siguiendo la regresión y la progresión de tu hoja Ejercicios. El enfoque queda vacío para que lo completes.
+- Para sumar otro enfoque, agregalo en `ENFOQUES`, al principio de `proxy.gs`, y corré `configurar`.
+
+**Ejercicios**: la ficha de técnica de cada ejercicio. Es opcional: completala de a poco, para los que tengan video o claves.
+
+| columna | qué va |
+|---|---|
+| `ejercicio` | nombre, igual que en Biblioteca y Planes |
 | `video_url` | link de YouTube **no listado** |
 | `como_1`, `como_2`, `como_3` | las tres claves de técnica |
 | `error_comun`, `musculos` (separados por coma), `por_que` | |
-| `regresion`, `progresion` | nombre del ejercicio más simple y del más exigente del mismo patrón. Activan los botones ↓ y ↑ en la sesión |
+| `patron`, `regresion`, `progresion` | solo cuentan para los ejercicios que **no** están en la Biblioteca |
 
-**Sesiones** y **Registro** las escribe la app. Podés leerlas, filtrarlas o armar gráficos en otra hoja, pero no cambies los encabezados.
+**Sesiones** y **Registro** las escribe la app. Podés leerlas, filtrarlas o armar gráficos en otra hoja, pero no cambies los encabezados. Registro guarda cada serie y queda completo, aunque la app solo lee las últimas 16 semanas (`SEMANAS_HISTORIAL` en el proxy).
+
+**Progresiones** también la escribe la app: una fila por alumno y ejercicio, con la **primera** vez (fecha, carga y reps de la mejor serie), la **última**, la mejor carga y cuántas sesiones lleva. Se actualiza al guardar cada sesión. Es la hoja para ver de un vistazo cómo viene cada alumno, y la app la usa para la "última vez" cuando es más vieja que 16 semanas. Si alguna vez la querés rehacer desde Registro: menú **Profe Virtual → Rehacer Progresiones desde Registro**.
 
 ## Regla de carga sugerida (a validar)
 
-Si la última vez el alumno llegó al tope del rango en todas las series (y, si registró RIR, con RIR 2 o más), se sugiere subir **2,5 kg**, o **1 kg** si la carga es menor a 10 kg. Si no, se repite la carga. Está en `sugerida()` e `incremento()` de `index.html`.
+Si la última vez el alumno llegó al tope del rango en todas las series (y, si registró RIR, con RIR 2 o más), se sugiere subir **2,5 kg**, o **1 kg** si la carga es menor a 10 kg. Si no, se repite la carga.
+
+Si la sesión se editó desde la app **después** del último registro de ese ejercicio, manda la carga del plan (columna `actualizado` de Planes). Al abrir el editor, la carga ya muestra la que la app propondría, así que guardar sin tocarla no cambia nada.
+
+**Cambio de nivel (a validar):** si dos sesiones seguidas completó el tope con margen, la app sugiere subir la carga o pasar al nivel siguiente de la cadena. Si dos sesiones seguidas no llegó al mínimo de repeticiones, sugiere volver un nivel, aclarando que retroceder también es parte del proceso. Está en `sugerida()` e `incremento()` de `index.html`.
 
 ## Datos sensibles
 
