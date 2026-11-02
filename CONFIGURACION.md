@@ -175,7 +175,7 @@ Si la última vez el alumno llegó al tope del rango en todas las series, **sin 
 Si la sesión se editó desde la app **después** del último registro de ese ejercicio, manda la carga del plan (columna `actualizado` de Planes). Al abrir el editor, la carga ya muestra la que la app propondría, así que guardar sin tocarla no cambia nada.
 
 **Recomendación al empezar cada ejercicio** (el alumno siempre decide):
-- La última vez completó el tope en todas las series **sin pausas** → la carga ya viene subida, y si hay un nivel siguiente en la cadena se ofrece pasar a él.
+- La última vez completó el tope en todas las series **sin pausas** → la carga ya viene subida y las repeticiones bajan **a la mitad** de las últimas, sin bajar del mínimo del rango (12 × 50 kg → 6 × 52,5 kg), para volver a construir hasta el tope. La app lo presenta como la estructura del programa, que funciona y previene lesiones, y aclara que la decisión es del alumno. Si hay un nivel siguiente en la cadena, también se ofrece pasar a él.
 - Llegó al tope pero **con pausas** → la app recomienda repetir la carga hasta lograrlo sin pausas, con un botón **Subir igual** por si prefiere avanzar.
 - Dos sesiones seguidas sin llegar al mínimo de repeticiones → sugiere volver un nivel, aclarando que retroceder también es parte del proceso.
 
