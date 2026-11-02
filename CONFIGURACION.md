@@ -123,6 +123,16 @@ Los ejercicios seguidos con el mismo `bloque` se hacen por vueltas: una serie de
 
 Si la columna `bloque` no está en tu hoja Planes, corré `configurar` de nuevo (menú **Profe Virtual → Configurar / reparar hojas**): la agrega al final sin tocar lo demás.
 
+### Armar sesiones desde la app
+
+En **Mi plan → Tus sesiones** aparecen **Armar sesión** y un botón por cada sesión para editarla. Elegís ejercicios del catálogo (o escribís uno nuevo), series, reps o segundos, descanso, carga inicial y nota, y podés unir ejercicios en circuito. Al guardar:
+
+- La sesión queda en **Planes**, con las mismas columnas de siempre.
+- Si la sesión ya existía, la versión anterior se copia a la hoja **Planes_archivo**, con la fecha. La app crea esa hoja la primera vez.
+- El historial no se toca: la "última vez" y la carga sugerida siguen el **nombre** del ejercicio. Para no cortar la progresión, usá el mismo nombre.
+
+Por ahora solo puede hacerlo **el dueño de la planilla**. Para habilitar a otra cuenta, agregá su email en `PUEDEN_ARMAR`, al principio de `proxy.gs`. Los alumnos no ven estos botones.
+
 Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
 **Ejercicios**: tu catálogo, compartido por todos.

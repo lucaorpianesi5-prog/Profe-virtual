@@ -10,6 +10,9 @@
 const CLIENT_ID = '290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com';
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
+// Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
+// para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
+const PUEDEN_ARMAR = [];
 
 const HOJAS = {
   Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas'],
@@ -118,6 +121,11 @@ function atender(q) {
   if (q.accion === 'datos') return Object.assign({ ok: true }, datosDe(alumno));
   if (q.accion === 'guardarSesion') return Object.assign({ ok: true }, guardarSesion(email, q.sesion, q.series));
   if (q.accion === 'preferencias') return Object.assign({ ok: true }, guardarPreferencias(alumno, q));
+  if (q.accion === 'guardarSesionPlan' || q.accion === 'borrarSesionPlan') {
+    if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede armar sesiones');
+    reemplazarSesionPlan(email, q.sesion, q.accion === 'guardarSesionPlan' ? q : null);
+    return Object.assign({ ok: true }, datosDe(alumno));
+  }
   throw falla('accion', 'Acción desconocida: ' + q.accion);
 }
 
@@ -162,6 +170,12 @@ function leerToken(token) {
   return d.e;
 }
 
+function puedeArmar(email) {
+  let dueno = '';
+  try { dueno = norm(Session.getEffectiveUser().getEmail()); } catch (e) {}
+  return (!!dueno && email === dueno) || PUEDEN_ARMAR.map(norm).indexOf(email) >= 0;
+}
+
 function buscarAlumno(email) {
   const a = filas('Alumnos').find(r => norm(r.email) === email);
   if (!a) throw falla('no_alumno', email);
@@ -196,7 +210,7 @@ function datosDe(a) {
       s: num(r.series) || 3, r: [rmin || rmax || 10, rmax || rmin || 10],
       seg: /^seg/i.test(txt(r.unidad)), d: desc == null ? 90 : desc, kg: num(r.carga_kg) || 0,
       por: txt(r.por_que) || c.por || '', notas: txt(r.notas),
-      b: txt(r.bloque).toUpperCase(),   // mismo bloque en filas seguidas = circuito
+      b: txt(r.bloque).toUpperCase(), porPlan: txt(r.por_que),   // mismo bloque en filas seguidas = circuito
       video: c.video || '', como: c.como || [], err: c.err || '', mus: c.mus || [], reg: c.reg || '', prog: c.prog || ''
     });
   });
@@ -215,7 +229,7 @@ function datosDe(a) {
 
   return {
     alumno: {
-      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo),
+      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
     plan: plan, catalogo: catalogo, sesiones: ses, historial: historial
@@ -244,6 +258,64 @@ function guardarSesion(email, s, series) {
       hr.getRange(hr.getLastRow() + 1, 1, filasReg.length, filasReg[0].length).setValues(filasReg);
     }
     return { guardadas: filasReg.length };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Reemplaza (o borra, si ses es null) una sesión del plan del alumno. Antes, copia las filas anteriores
+// a la hoja Planes_archivo con la fecha, para poder recuperarlas.
+function reemplazarSesionPlan(email, letra, ses) {
+  letra = txt(letra).toUpperCase();
+  if (!/^[A-Z0-9]{1,3}$/.test(letra)) throw falla('datos', 'Letra de sesión inválida');
+  let ejs = [];
+  if (ses) {
+    ejs = (Array.isArray(ses.ejercicios) ? ses.ejercicios : []).filter(e => e && txt(e.n)).slice(0, 40);
+    if (!ejs.length) throw falla('datos', 'La sesión no tiene ejercicios');
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const h = hoja('Planes');
+    const v = h.getDataRange().getValues();
+    const cab = v[0].map(c => txt(c));
+    const ce = cab.indexOf('email'), cs = cab.indexOf('sesion');
+    const viejas = [];
+    for (let i = 1; i < v.length; i++) {
+      if (norm(v[i][ce]) === email && txt(v[i][cs] || 'A').toUpperCase() === letra) viejas.push(i + 1);
+    }
+    if (viejas.length) {
+      const lib = libro();
+      let ar = lib.getSheetByName('Planes_archivo');
+      if (!ar) {
+        ar = lib.insertSheet('Planes_archivo');
+        ar.getRange(1, 1, 1, cab.length + 1).setValues([['archivado'].concat(cab)]).setFontWeight('bold');
+        ar.setFrozenRows(1);
+      }
+      const ahora = new Date();
+      const copia = viejas.map(f => [ahora].concat(v[f - 1]));
+      ar.getRange(ar.getLastRow() + 1, 1, copia.length, copia[0].length).setValues(copia);
+      // Se borran de abajo hacia arriba para que los números de fila no se corran
+      for (let k = viejas.length - 1; k >= 0; k--) h.deleteRow(viejas[k]);
+    }
+    if (ejs.length) {
+      const nuevas = ejs.map((e, i) => {
+        const fila = cab.map(() => '');
+        const rmin = Math.max(1, Math.round(num(e.rmin) || num(e.rmax) || 10));
+        const rmax = Math.max(rmin, Math.round(num(e.rmax) || rmin));
+        const poner = (c, val) => { const j = cab.indexOf(c); if (j >= 0) fila[j] = val; };
+        poner('email', email); poner('sesion', letra); poner('sesion_nombre', i === 0 ? celda(ses.nombre) : '');
+        poner('orden', i + 1); poner('ejercicio', celda(e.n));
+        poner('series', Math.min(20, Math.max(1, Math.round(num(e.s) || 3))));
+        poner('reps_min', rmin); poner('reps_max', rmax); poner('unidad', e.seg ? 'seg' : 'reps');
+        poner('descanso_seg', Math.min(900, Math.max(0, Math.round(num(e.d) == null ? 90 : num(e.d)))));
+        poner('carga_kg', Math.max(0, num(e.kg) || 0)); poner('notas', celda(e.notas).slice(0, 300));
+        poner('por_que', celda(e.porPlan).slice(0, 500));
+        poner('bloque', celda(e.b).toUpperCase().slice(0, 3));
+        return fila;
+      });
+      h.getRange(h.getLastRow() + 1, 1, nuevas.length, cab.length).setValues(nuevas);
+    }
   } finally {
     lock.releaseLock();
   }
