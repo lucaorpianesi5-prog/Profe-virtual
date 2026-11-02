@@ -495,6 +495,7 @@ button:active{transition:transform .1s}
 .pk-enf::-webkit-scrollbar{display:none}
 .pk-enf button{flex-shrink:0;min-height:38px;padding:0 .8rem;border-radius:999px;border:1px solid var(--borde2);background:var(--card);font-size:.74rem;font-weight:600;color:var(--texto2)}
 .pk-enf button.on{background:var(--acento);border-color:var(--acento);color:var(--sobre-acento)}
+#nb-pat,#nb-enf{flex-wrap:wrap;overflow:visible}
 .pk-pat{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--texto3);font-weight:700;margin:.5rem 0 -.15rem .2rem}
 .sust-op small.aca{color:var(--acento);font-weight:700}
 .ar-pats{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem}
@@ -1572,7 +1573,7 @@ function elegirEjercicio(i,patIni){
       const q=$('#pk-q').value.trim(), k=sinTilde(q);
       let l=items.filter(x=>(!enf||x.enf===enf)&&(!pat||k||x.pat===pat)&&(!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)));
       const exacto=items.some(x=>sinTilde(x.n)===k);
-      let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}"><span>${ico('plus')}Usar «${esc(q)}»</span><small>No está en la Biblioteca</small></button>`:'';
+      let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}" data-nuevo="1"><span>${ico('plus')}Usar «${esc(q)}»</span><small>${puedeArmar()?'Nuevo: sumalo a la Biblioteca':'No está en la Biblioteca'}</small></button>`:'';
       if(pat&&!k)html+=`<button class="sust-op" data-todos="1"><span>${ico('list')}Ver todos los patrones</span><small></small></button>`;
       let grupo=null;
       l.slice(0,120).forEach(x=>{ if(!k&&x.pat!==grupo){grupo=x.pat;html+=`<div class="pk-pat">${esc(grupo)}</div>`} html+=`<button class="sust-op" data-n="${esc(x.n)}"><span>${esc(x.n)}</span>${info(x)}</button>` });
@@ -1585,14 +1586,72 @@ function elegirEjercicio(i,patIni){
     $('#pk-l').addEventListener('click',e=>{
       if(e.target.closest('[data-todos]')){pat='';pinta();return}
       const b=e.target.closest('[data-n]'); if(!b)return; const n=b.dataset.n.slice(0,80);
-      if(i==null){
-        const kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
-        const c=enCatalogo(n);
-        AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,lado:!!(c&&c.lado),d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
-      } else { AR.ej[i].n=n; const c=enCatalogo(n); if(c&&c.lado!=null)AR.ej[i].lado=!!c.lado }
-      marcar(); cerrar(); vibra(10); renderArmar();
-      if(i==null)setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},60);
+      if(b.dataset.nuevo&&puedeArmar()){altaBiblioteca(n,i,pat);return}
+      ponerEnArmado(n,i);
     });
+    pinta();
+  });
+}
+/* Agrega (i == null) o cambia (i) un ejercicio de la sesión que se está armando */
+function ponerEnArmado(n,i,lado){
+  const c=enCatalogo(n), ld=lado!=null?lado:(c&&c.lado);
+  if(i==null){
+    const kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
+    AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,lado:!!ld,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
+  } else { AR.ej[i].n=n; if(ld!=null)AR.ej[i].lado=!!ld }
+  marcar(); cerrar(); vibra(10); renderArmar();
+  if(i==null)setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},60);
+}
+/* Ejercicio nuevo: se suma a la Biblioteca con patrón, enfoque y lugar en la progresión (o solo a esta sesión) */
+const PATRONES_DEF=['Bisagra de Cadera','Bisagra de Rodilla','Core','Tracción','Empuje','Tren superior','Tren inferior','Full body'];
+const ENFOQUES_DEF=['Fuerza','Amplitud de Movimiento','Activación','Potencia','Equilibrio y Coordinación','Resistencia'];
+function altaBiblioteca(nombre,i,patIni){
+  const pats=(S.patrones&&S.patrones.length?S.patrones:PATRONES_DEF), enfs=(S.enfoques&&S.enfoques.length?S.enfoques:ENFOQUES_DEF);
+  const st={pat:pats.includes(patIni)?patIni:'',enf:'',pos:'',lado:false};
+  sheet(`<div class="sheet-col"><div><h3>Ejercicio nuevo</h3><p class="sub">Sumalo a la Biblioteca: queda en el catálogo para otras sesiones, con su lugar en la progresión.</p></div>
+    <label class="campo"><span>Nombre</span><input class="cin" id="nb-n" maxlength="80" value="${esc(nombre)}"></label>
+    <div><div class="card-label" style="margin-bottom:.45rem">Patrón</div><div class="pk-enf" id="nb-pat">${pats.map(x=>`<button data-v="${esc(x)}" class="${x===st.pat?'on':''}">${esc(x)}</button>`).join('')}</div></div>
+    <div><div class="card-label" style="margin-bottom:.45rem">Enfoque</div><div class="pk-enf" id="nb-enf">${enfs.map(x=>`<button data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>
+    <div id="nb-pos"></div>
+    <button class="ar-lado" id="nb-lado" aria-pressed="false"><i>${ico('check')}</i>Por lado (unilateral)</button>
+    <button class="btn" id="nb-ok" disabled>Agregar a la Biblioteca</button>
+    <button class="btn sec chico" id="nb-solo">Usar solo en esta sesión</button></div>`,()=>{
+    const pinta=()=>{
+      $('#nb-ok').disabled=!(st.pat&&st.enf&&$('#nb-n').value.trim());
+      if(!st.pat||!st.enf){$('#nb-pos').innerHTML='<p class="nota-chica">Elegí patrón y enfoque para ver dónde va en la progresión.</p>';return}
+      const cads=(S.cadenas||[]).filter(c=>c.pat===st.pat&&c.enf===st.enf);
+      const op=(v,t,d)=>`<button class="opcion ${st.pos===v?'sel':''}" data-pos="${esc(v)}"><span class="opcion-radio"></span><span><span class="opcion-tit">${t}</span>${d?`<span class="opcion-desc n">${d}</span>`:''}</span></button>`;
+      let h=op('','Cadena nueva','Todavía no lo enlazo con otro ejercicio');
+      cads.forEach(c=>{
+        const lleno=c.ej.length>=8;
+        h+=`<div class="pk-pat">Cadena: ${c.ej.map(esc).join(' → ')}</div>`;
+        if(lleno){h+='<p class="nota-chica">Esta cadena ya tiene 8 niveles.</p>';return}
+        h+=op('antes|'+c.ej[0],'Antes de '+esc(c.ej[0]),'Más simple: queda como su regresión');
+        for(let k=0;k<c.ej.length-1;k++)h+=op('despues|'+c.ej[k],'Entre '+esc(c.ej[k])+' y '+esc(c.ej[k+1]),'');
+        h+=op('despues|'+c.ej[c.ej.length-1],'Después de '+esc(c.ej[c.ej.length-1]),'Más exigente: queda como su progresión');
+      });
+      $('#nb-pos').innerHTML=`<div class="card-label" style="margin-bottom:.45rem">Lugar en la progresión</div><div class="opciones">${h}</div>`;
+    };
+    const elegir=(id,k)=>$(id).addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;st[k]=b.dataset.v;st.pos='';$$(id+' button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
+    elegir('#nb-pat','pat'); elegir('#nb-enf','enf');
+    $('#nb-pos').addEventListener('click',e=>{const b=e.target.closest('[data-pos]');if(!b)return;st.pos=b.dataset.pos;vibra(6);pinta()});
+    $('#nb-n').addEventListener('input',pinta);
+    $('#nb-lado').onclick=()=>{st.lado=!st.lado;$('#nb-lado').classList.toggle('on',st.lado);$('#nb-lado').setAttribute('aria-pressed',st.lado)};
+    $('#nb-solo').onclick=()=>ponerEnArmado($('#nb-n').value.trim().slice(0,80)||nombre,i,st.lado);
+    $('#nb-ok').onclick=async()=>{
+      const n=$('#nb-n').value.trim().slice(0,80), [lado,junto]=st.pos?st.pos.split('|'):['',''];
+      if(enCatalogo(n)&&Object.values(S.cat).some(c=>sinTilde(c.n)===sinTilde(n)&&c.cad!=null)){snack('"'+n+'" ya está en la Biblioteca');return}
+      const ok=$('#nb-ok'); ok.disabled=true; ok.textContent='Agregando…';
+      if(REAL){
+        try{ aplicarDatos(await api('agregarABiblioteca',{n,pat:st.pat,enf:st.enf,junto,lado,porLado:st.lado})) }
+        catch(e){ ok.disabled=false; ok.textContent='Agregar a la Biblioteca'; return snack(e.code?mensajeError(e):'Sin conexión: no se agregó. Probá de nuevo cuando tengas señal.') }
+      } else {
+        S.cadenas=S.cadenas||[]; let c=junto&&S.cadenas.find(x=>x.ej.includes(junto));
+        if(c){c.ej.splice(lado==='antes'?c.ej.indexOf(junto):c.ej.indexOf(junto)+1,0,n)} else {c={pat:st.pat,enf:st.enf,ej:[n]};S.cadenas.push(c)}
+        const ci=S.cadenas.indexOf(c); c.ej.forEach((x,k)=>{S.cat[x]={...(S.cat[x]||{n:x,video:'',como:[],err:'',mus:[],por:''}),pat:c.pat,enf:c.enf,cad:ci,niv:k+1,reg:c.ej[k-1]||'',prog:c.ej[k+1]||'',...(x===n?{lado:st.lado}:{})}});
+      }
+      ponerEnArmado(n,i,st.lado); snack(n+' agregado a la Biblioteca');
+    };
     pinta();
   });
 }
@@ -2110,11 +2169,11 @@ const MSJ={
 };
 const mensajeError=e=>(MSJ[e.code]||(()=>'No hay conexión con el registro de Luca. Probá de nuevo en un rato.'))(e);
 
-function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,patrones:S.patrones,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
   S.alumno=d.alumno; S.planCrudo=d.plan||[];
   S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
-  S.cadenas=d.cadenas||[]; S.patrones=d.patrones||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
+  S.cadenas=d.cadenas||[]; S.patrones=d.patrones||[]; S.enfoques=d.enfoques||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
   const dias=[...new Set((d.alumno.dias||'').split(',').map(x=>LET.indexOf(x.trim().toUpperCase())).filter(i=>i>=0))].sort((a,b)=>a-b);

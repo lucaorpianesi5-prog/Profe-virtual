@@ -133,6 +133,13 @@ En **Mi plan → Tus sesiones** aparecen **Armar sesión** y un botón por cada 
 
 Por ahora solo puede hacerlo **el dueño de la planilla**. Para habilitar a otra cuenta, agregá su email en `PUEDEN_ARMAR`, al principio de `proxy.gs`. Los alumnos no ven estos botones.
 
+**Ejercicios nuevos a la Biblioteca:** en el buscador de "Armar sesión", si escribís un ejercicio que no está y tocás **«Usar …»**, se abre **Ejercicio nuevo**:
+- Elegís patrón y enfoque, y **dónde va en la progresión**: aparecen las cadenas con ese patrón y enfoque, para ponerlo antes, entre o después de otro ejercicio. También podés dejarlo como cadena nueva.
+- Si es unilateral, marcás **Por lado** y se crea su ficha en Ejercicios con la casilla tildada.
+- Se agrega a la Biblioteca en ese lugar (la regresión y la progresión quedan enlazadas) y a la sesión que estás armando.
+- **Usar solo en esta sesión** lo agrega a la sesión sin tocar la Biblioteca.
+
+
 Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
 **Biblioteca**: tus cadenas de progresión, compartidas por todos. Es la hoja que ordena el catálogo.
