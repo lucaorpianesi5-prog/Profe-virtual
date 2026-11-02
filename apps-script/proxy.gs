@@ -117,9 +117,101 @@ function configurar() {
 
   // La hoja vacía que trae toda planilla nueva ya no hace falta.
   lib.getSheets().forEach(h => {
-    if (!HOJAS[h.getName()] && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
+    if (!HOJAS[h.getName()] && ['Listas', 'Panel', 'Planes_archivo'].indexOf(h.getName()) < 0 && h.getLastRow() === 0 && lib.getSheets().length > 1) lib.deleteSheet(h);
+  });
+  // Ordenar la planilla: listas desplegables, Panel de alumnos y aviso en las hojas que escribe la app.
+  // Cada parte va por separado: si una falla, las demás se aplican igual (y la app no depende de ninguna).
+  [listasDesplegables, armarPanel, protegerHojasDeLaApp].forEach(f => {
+    try { f(lib); } catch (e) { Logger.log('No se pudo completar ' + f.name + ': ' + e); }
   });
   Logger.log('Listo. Hojas: ' + Object.keys(HOJAS).join(', ') + '. Alumno de prueba: ' + yo);
+}
+
+/* ───────── Orden de la planilla (los aplica configurar) ───────── */
+const ESTADOS = ['activo', 'vencido', 'pausa'];
+const UNIDADES = ['reps', 'seg', 'reps por lado', 'seg por lado'];
+
+// Letra de columna (1 → A, 27 → AA)
+function letra(n) { let s = ''; for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; }
+// Letra de la columna que tiene ese encabezado en la hoja
+function colDe(h, nombre) {
+  const cab = h.getRange(1, 1, 1, h.getLastColumn()).getValues()[0].map(c => txt(c));
+  const j = cab.indexOf(nombre);
+  if (j < 0) throw new Error('Falta la columna "' + nombre + '" en ' + h.getName());
+  return letra(j + 1);
+}
+function columnaEntera(h, nombre) { return h.getRange(colDe(h, nombre) + '2:' + colDe(h, nombre)); }
+
+// 1 y 2. Listas desplegables: ejercicios (desde la Biblioteca), estado de Alumnos y unidad de Planes.
+function listasDesplegables(lib) {
+  // Hoja oculta "Listas": todos los ejercicios de la Biblioteca, ordenados, para el desplegable.
+  let li = lib.getSheetByName('Listas');
+  if (!li) li = lib.insertSheet('Listas');
+  const bib = lib.getSheetByName('Biblioteca');
+  const ini = colDe(bib, 'nivel_1'), fin = colDe(bib, 'nivel_' + NIVELES);
+  const rango = 'Biblioteca!' + ini + '2:' + fin;
+  li.getRange('A1').setValue('ejercicios (de la Biblioteca, no editar)').setFontWeight('bold');
+  li.getRange('A2').setFormula('=IFERROR(SORT(UNIQUE(FILTER(FLATTEN(' + rango + '),FLATTEN(' + rango + ')<>""))),"")');
+  li.hideSheet();
+  // Ejercicio: sugiere los de la Biblioteca. Avisa (sin bloquear) si se escribe uno que no está.
+  const ej = SpreadsheetApp.newDataValidation().requireValueInRange(li.getRange('A2:A'), true).setAllowInvalid(true)
+    .setHelpText('Elegí un ejercicio de la Biblioteca. Si no está, agregalo primero en la Biblioteca para que el nombre coincida en todas las hojas.').build();
+  columnaEntera(lib.getSheetByName('Planes'), 'ejercicio').setDataValidation(ej);
+  columnaEntera(lib.getSheetByName('Ejercicios'), 'ejercicio').setDataValidation(ej);
+  const lista = (valores, ayuda) => SpreadsheetApp.newDataValidation().requireValueInList(valores, true).setAllowInvalid(false).setHelpText(ayuda).build();
+  columnaEntera(lib.getSheetByName('Alumnos'), 'estado').setDataValidation(lista(ESTADOS, 'activo = entra a la app; vencido o pausa = queda afuera.'));
+  columnaEntera(lib.getSheetByName('Planes'), 'unidad').setDataValidation(lista(UNIDADES, 'reps o seg; "por lado" para los unilaterales.'));
+}
+
+// 3. Las hojas que escribe la app avisan antes de editarlas a mano (se puede seguir si se confirma).
+function protegerHojasDeLaApp(lib) {
+  ['Sesiones', 'Registro', 'Progresiones', 'Planes_archivo', 'Panel', 'Listas'].forEach(n => {
+    const h = lib.getSheetByName(n);
+    if (!h || h.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) return;
+    h.protect().setDescription('La escribe la app: editarla a mano puede romper datos.').setWarningOnly(true);
+  });
+}
+
+// 4. Panel: una fila por alumno, solo con fórmulas (se recalcula solo; la app no lo usa).
+function armarPanel(lib) {
+  let p = lib.getSheetByName('Panel');
+  if (!p) p = lib.insertSheet('Panel', 0);
+  p.clear();
+  const al = lib.getSheetByName('Alumnos'), se = lib.getSheetByName('Sesiones'), pr = lib.getSheetByName('Progresiones');
+  const A = c => 'Alumnos!' + colDe(al, c) + '2:' + colDe(al, c);
+  const S_ = c => 'Sesiones!' + colDe(se, c) + '2:' + colDe(se, c);
+  const hay = A('email') + '<>""';
+  // Fechas de Sesiones como número (se guardan como texto aaaa-mm-dd); las que no se entienden cuentan como 0.
+  const fechas = 'ARRAYFORMULA(IFERROR(DATEVALUE(' + S_('fecha') + '),0))';
+  const de = 'ARRAYFORMULA(LOWER(TRIM(' + S_('email') + ')))=e';
+  const cab = ['Alumno', 'Email', 'Estado', 'Días por semana', 'Última sesión', 'Días sin entrenar',
+    'Sesiones (últimos 30 días)', 'Constancia (4 semanas)', 'Vence', 'Días para vencer', 'Ejercicios registrados'];
+  p.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold').setWrap(true);
+  p.setFrozenRows(1);
+  const f = {
+    A2: '=FILTER(' + A('nombre') + ',' + hay + ')',
+    B2: '=FILTER(LOWER(TRIM(' + A('email') + ')),' + hay + ')',
+    C2: '=FILTER(' + A('estado') + ',' + hay + ')',
+    D2: '=MAP(FILTER(' + A('dias') + ',' + hay + '),LAMBDA(d,IF(d="","—",COUNTA(SPLIT(d,",")))))',
+    E2: '=MAP(B2:B,LAMBDA(e,IF(e="","",LET(m,MAX(IFERROR(FILTER(' + fechas + ',' + de + ',' + fechas + '>0),0)),IF(m=0,"—",m)))))',
+    F2: '=MAP(E2:E,LAMBDA(u,IF(ISNUMBER(u),TODAY()-u,"")))',
+    G2: '=MAP(B2:B,LAMBDA(e,IF(e="","",SUMPRODUCT((' + de + ')*(' + fechas + '>=TODAY()-30)))))',
+    H2: '=MAP(B2:B,D2:D,LAMBDA(e,d,IF(OR(e="",NOT(ISNUMBER(d))),"",MIN(1,SUMPRODUCT((' + de + ')*(' + fechas + '>=TODAY()-28))/(d*4)))))',
+    I2: '=FILTER(' + A('fecha_vencimiento') + ',' + hay + ')',
+    J2: '=MAP(I2:I,LAMBDA(v,IF(v="","",IFERROR(IF(ISNUMBER(v),v,DATEVALUE(v))-TODAY(),""))))',
+    K2: '=MAP(B2:B,LAMBDA(e,IF(e="","",COUNTIF(ARRAYFORMULA(LOWER(TRIM(Progresiones!' + colDe(pr, 'email') + '2:' + colDe(pr, 'email') + '))),e))))'
+  };
+  Object.keys(f).forEach(k => p.getRange(k).setFormula(f[k]));
+  p.getRange('E2:E').setNumberFormat('dd/mm/yyyy');
+  p.getRange('I2:I').setNumberFormat('dd/mm/yyyy');
+  p.getRange('H2:H').setNumberFormat('0%');
+  p.setColumnWidth(1, 150); p.setColumnWidth(2, 220);
+  // Colores: más de 7 días sin entrenar (amarillo) y suscripción que vence en 7 días o menos (rojo).
+  p.setConditionalFormatRules([
+    SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(7).setBackground('#FCE8B2').setRanges([p.getRange('F2:F')]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenNumberLessThanOrEqualTo(7).setBackground('#F4C7C3').setRanges([p.getRange('J2:J')]).build()
+  ]);
+  p.getRange('A1').setNote('Panel automático: se arma con fórmulas a partir de Alumnos, Sesiones y Progresiones. No escribas acá; corré configurar para rehacerlo.');
 }
 
 // Arma cadenas (una fila por cadena) siguiendo regresion → ejercicio → progresion de la hoja Ejercicios.

@@ -164,6 +164,24 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 
 **Progresiones** también la escribe la app: una fila por alumno y ejercicio, con la **primera** vez (fecha, carga y reps de la mejor serie), la **última**, la mejor carga y cuántas sesiones lleva. Se actualiza al guardar cada sesión. Es la hoja para ver de un vistazo cómo viene cada alumno, y la app la usa para la "última vez" cuando es más vieja que 16 semanas. Si alguna vez la querés rehacer desde Registro: menú **Profe Virtual → Rehacer Progresiones desde Registro**.
 
+### Orden de la planilla (lo arma `configurar`)
+
+- **Listas desplegables**:
+  - `ejercicio`, en Planes y en Ejercicios: sugiere los ejercicios de la Biblioteca. Si escribís uno que no está, avisa con una marca roja, pero no lo bloquea. Agregalo primero a la Biblioteca, así el nombre coincide en todas las hojas.
+  - `estado` en Alumnos: activo, vencido o pausa.
+  - `unidad` en Planes: reps, seg, reps por lado o seg por lado.
+  - La lista de ejercicios sale de una hoja oculta, **Listas**, que se actualiza sola con la Biblioteca. No la edites.
+- **Aviso antes de editar**: Sesiones, Registro, Progresiones, Planes_archivo, Panel y Listas piden confirmación si las editás a mano. La app las sigue escribiendo igual.
+- **Panel**: la primera hoja, una fila por alumno, hecha solo con fórmulas. Muestra:
+  - estado, días por semana y última sesión;
+  - días sin entrenar (en amarillo, si pasan 7);
+  - sesiones de los últimos 30 días y constancia de las últimas 4 semanas (sesiones hechas / días × 4);
+  - vencimiento y días para vencer (en rojo, si faltan 7 o menos);
+  - cuántos ejercicios tiene registrados.
+
+  No escribas en el Panel: corré `configurar` para rehacerlo.
+- **Columnas que ya no uses** (por ejemplo `patron`, `regresion` y `progresion` de Ejercicios, cuando todo esté en la Biblioteca): **ocultalas**, no las borres. Si las borrás, `configurar` las vuelve a crear.
+
 ## Regla de carga sugerida
 
 El método: se trabaja en el rango de repeticiones del plan (por defecto, de **4 a 12** al agregar un ejercicio) y se sube la carga recién cuando el tope sale **cómodo, firme y sin pausas**.
