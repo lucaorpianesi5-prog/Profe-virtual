@@ -1493,7 +1493,7 @@ function renderArmar(){
        <label class="campo"><span>Carga (kg)</span><input class="cin num" data-f="kg" inputmode="decimal" placeholder="—" value="${esc(e.kg)}"></label>
        <label class="campo"><span>Nota</span><input class="cin" data-f="notas" maxlength="200" placeholder="Opcional" value="${esc(e.notas)}"></label>
       </div>
-      <button class="ar-lado ${e.lado?'on':''}" data-a="lado" aria-pressed="${!!e.lado}"><i>${ico('check')}</i>Por lado (unilateral): las ${e.seg?'segundos':'repeticiones'} se cuentan de cada lado</button>
+      <button class="ar-lado ${e.lado?'on':''}" data-a="lado" aria-pressed="${!!e.lado}"><i>${ico('check')}</i>Por lado (unilateral): ${e.seg?'los segundos':'las repeticiones'} se cuentan de cada lado</button>
      </div>
      ${sig?`<div class="ar-link"><button data-a="link" data-i="${i}" class="${unido?'on':''}">${ico('link')}${unido?'En circuito · separar':'Unir en circuito con el siguiente'}</button></div>`:''}`}).join('')}
    <button class="btn sec chico" id="ar-add">${ico('plus')}Agregar ejercicio</button>
