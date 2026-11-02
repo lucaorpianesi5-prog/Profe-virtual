@@ -327,6 +327,11 @@ function atender(q) {
   if (q.accion === 'datos') return Object.assign({ ok: true }, datosDe(alumno));
   if (q.accion === 'guardarSesion') return Object.assign({ ok: true }, guardarSesion(email, q.sesion, q.series));
   if (q.accion === 'preferencias') return Object.assign({ ok: true }, guardarPreferencias(alumno, q));
+  if (q.accion === 'agregarABiblioteca') {
+    if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede cargar ejercicios');
+    agregarABiblioteca(q);
+    return Object.assign({ ok: true }, datosDe(alumno));
+  }
   if (q.accion === 'guardarSesionPlan' || q.accion === 'borrarSesionPlan') {
     if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede armar sesiones');
     reemplazarSesionPlan(email, q.sesion, q.accion === 'guardarSesionPlan' ? q : null);
@@ -465,7 +470,7 @@ function datosDe(a) {
       email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
-    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, sesiones: ses, historial: historial,
+    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, enfoques: ENFOQUES, sesiones: ses, historial: historial,
     progresiones: (libro().getSheetByName('Progresiones') ? filas('Progresiones') : []).filter(r => norm(r.email) === email).map(r => ({
       ej: txt(r.ejercicio), pf: fecha(r.primera_fecha), pk: num(r.primera_carga), pr: num(r.primeras_reps),
       uf: fecha(r.ultima_fecha), uk: num(r.ultima_carga), ur: num(r.ultimas_reps), mk: num(r.mejor_carga), n: num(r.sesiones)
@@ -541,6 +546,53 @@ function actualizarProgresiones(email, f, series) {
     if (p._fila) h.getRange(p._fila, 1, 1, cab.length).setValues([fila]); else nuevas.push(fila);
   });
   if (nuevas.length) h.getRange(h.getLastRow() + 1, 1, nuevas.length, cab.length).setValues(nuevas);
+}
+
+// Ejercicio nuevo desde la app (Armar sesión): entra a la Biblioteca como cadena propia o dentro de una cadena
+// existente, antes o después de otro ejercicio (q.junto + q.lado = 'antes' | 'despues'). Si es unilateral, se crea
+// o marca su ficha en Ejercicios con por_lado.
+function agregarABiblioteca(q) {
+  const n = celda(q.n).slice(0, 80);
+  if (!txt(n)) throw falla('datos', 'Falta el nombre del ejercicio');
+  const pat = PATRONES.find(x => norm(x) === norm(q.pat)), enf = ENFOQUES.find(x => norm(x) === norm(q.enf));
+  if (!pat || !enf) throw falla('datos', 'Elegí el patrón y el enfoque');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const h = hoja('Biblioteca');
+    const v = h.getRange(1, 1, Math.max(1, h.getLastRow()), h.getLastColumn()).getValues();
+    const cab = v[0].map(c => txt(c)), niv = cab.map((c, j) => /^nivel_\d+$/.test(c) ? j : -1).filter(j => j >= 0);
+    const cp = cab.indexOf('patron'), ce = cab.indexOf('enfoque');
+    for (let i = 1; i < v.length; i++) if (niv.some(j => norm(v[i][j]) === norm(n))) throw falla('datos', '"' + n + '" ya está en la Biblioteca');
+    let fila = -1, lista = [];
+    if (txt(q.junto)) {
+      for (let i = 1; i < v.length && fila < 0; i++) if (niv.some(j => norm(v[i][j]) === norm(q.junto))) fila = i;
+      if (fila < 0) throw falla('datos', 'No encontré "' + q.junto + '" en la Biblioteca');
+      lista = niv.map(j => txt(v[fila][j])).filter(Boolean);
+      if (lista.length >= niv.length) throw falla('datos', 'Esa cadena ya tiene ' + niv.length + ' niveles');
+      const k = lista.map(norm).indexOf(norm(q.junto));
+      lista.splice(q.lado === 'antes' ? k : k + 1, 0, n);
+      niv.forEach((j, x) => { v[fila][j] = lista[x] || ''; });
+      h.getRange(fila + 1, 1, 1, cab.length).setValues([v[fila]]);
+    } else {
+      const nueva = cab.map(() => '');
+      nueva[cp] = pat; nueva[ce] = enf; nueva[niv[0]] = n;
+      h.getRange(h.getLastRow() + 1, 1, 1, cab.length).setValues([nueva]);
+    }
+    if (q.porLado) {
+      const he = hoja('Ejercicios'), ve = he.getRange(1, 1, Math.max(1, he.getLastRow()), he.getLastColumn()).getValues();
+      const cabE = ve[0].map(c => txt(c)), jn = cabE.indexOf('ejercicio'), jl = cabE.indexOf('por_lado');
+      let fe = -1;
+      for (let i = 1; i < ve.length; i++) if (norm(ve[i][jn]) === norm(n)) fe = i;
+      if (jl >= 0) {
+        if (fe < 0) { const r = cabE.map(() => ''); r[jn] = n; r[jl] = true; he.getRange(he.getLastRow() + 1, 1, 1, cabE.length).setValues([r]); }
+        else he.getRange(fe + 1, jl + 1).setValue(true);
+      }
+    }
+    try { actualizarListas(libro()); } catch (e) {}
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // Reemplaza (o borra, si ses es null) una sesión del plan del alumno. Antes, copia las filas anteriores
