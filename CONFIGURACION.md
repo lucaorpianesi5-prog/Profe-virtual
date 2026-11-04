@@ -1,5 +1,7 @@
 # Puesta en marcha con datos reales
 
+> Estado del proyecto, bugs, ideas y próximos pasos: [CONTINUIDAD.md](CONTINUIDAD.md).
+
 La app tiene dos modos:
 
 - **Demo** (como hasta ahora): datos de ejemplo, no guarda nada. Es lo que se ve mientras `CONFIG` en `index.html` está vacío, y siempre se puede abrir agregando `?demo` a la URL.
@@ -198,6 +200,8 @@ Si la última vez el alumno llegó al tope del rango en todas las series, **sin 
 **Pausas:** al marcar cada serie, la barra de descanso pregunta si hubo pausas dentro de la serie (No, 1, 2, 3+). Si no se toca, cuenta como sin pausas. Quedan en la columna `pausas` de Registro. El botón ⓘ explica el método: ante el fallo, frenar unos 10 segundos para que el músculo recupere ATP y seguir; funciona, pero para subir la carga o de nivel las pausas tienen que ser cero.
 
 Si la sesión se editó desde la app **después** del último registro de ese ejercicio, manda la carga del plan (columna `actualizado` de Planes). Al abrir el editor, la carga ya muestra la que la app propondría, así que guardar sin tocarla no cambia nada.
+
+**Meta de cada sesión:** si no corresponde subir la carga, la sesión arranca con el mismo peso y **una repetición más** que la serie más floja de la última vez, hasta el tope (70 kg × 7 → 70 kg × 8). La misma meta se ve en **Progreso → Ejercicios**.
 
 **Recomendación al empezar cada ejercicio** (el alumno siempre decide):
 - La última vez completó el tope en todas las series **sin pausas** → la carga ya viene subida y las repeticiones bajan **siempre a la mitad** de las últimas, aunque quede debajo del rango del ejercicio (12 × 50 kg → 6 × 52,5 kg; de 8 → 4; con un número impar se redondea para abajo, para que quede margen: 9 → 4), para volver a construir hasta el tope. La app lo presenta como la estructura del programa, que funciona y previene lesiones, y aclara que la decisión es del alumno. Si hay un nivel siguiente en la cadena, también se ofrece pasar a él.

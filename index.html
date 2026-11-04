@@ -482,6 +482,25 @@ button:active{transition:transform .1s}
 .ar-link .ic{width:15px;height:15px}
 .ar-borrar{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;font-size:.8rem;font-weight:700;color:var(--rojo);margin-top:.4rem}
 .ar-borrar .ic{width:16px;height:16px}
+.pe-busca{margin-bottom:.2rem}
+.pe-fila{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--borde2);border-radius:var(--radio);padding:.75rem .9rem;min-height:60px}
+.pe-fila.sel{border-color:var(--acento);background:var(--acento-suave)}
+.pe-fila .pe-n{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem}
+.pe-fila .pe-n b{font-size:.9rem;line-height:1.25}
+.pe-fila .pe-n small{font-size:.7rem;color:var(--texto3);font-variant-numeric:tabular-nums}
+.pe-prox{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;font-variant-numeric:tabular-nums}
+.pe-prox small{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;color:var(--texto3);font-weight:700}
+.pe-prox b{font-size:.86rem;color:var(--acento);white-space:nowrap}
+.pe-prox b.sube::before{content:'↑ '}
+.pe-meta{background:var(--acento-suave);border:1px solid var(--acento-borde);border-radius:14px;padding:.8rem .9rem}
+.pe-meta .card-label{color:var(--acento)}
+.pe-meta .pe-big{font-size:1.35rem;font-weight:800;font-variant-numeric:tabular-nums;margin:.15rem 0}
+.pe-meta p{font-size:.78rem;color:var(--texto2);line-height:1.45}
+.pe-series{display:flex;flex-direction:column;gap:.3rem;margin-top:.4rem}
+.pe-series div{display:flex;justify-content:space-between;font-size:.84rem;font-variant-numeric:tabular-nums;padding:.35rem 0;border-bottom:1px solid var(--borde)}
+.pe-series span{color:var(--texto3)}
+.pe-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}
+.pe-detalle{display:flex;flex-direction:column;gap:.85rem}
 .consejo{display:flex;gap:.6rem;align-items:flex-start;background:var(--card2);border:1px solid var(--borde2);border-radius:14px;padding:.75rem .85rem;font-size:.8rem;line-height:1.5;color:var(--texto2)}
 .consejo>.ic{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:var(--acento)}
 .consejo.atras>.ic{color:var(--amber)}
@@ -1352,7 +1371,9 @@ function sugerencia(e){
   if(!ls_.length){ const p=progDe(e); return {kg:p&&p.uk?p.uk:(e.kg||0),reps:top,sube:false} }
   const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return {kg:e.kg||0,reps:top,sube:false};
   const tope=ls_.length>=e.s&&ls_.every(s=>serieTope(e,s));
-  return tope?{kg:+(max+incremento(max)).toFixed(1),reps:repsAlSubir(e,ls_),sube:true}:{kg:max,reps:top,sube:false};
+  if(tope)return {kg:+(max+incremento(max)).toFixed(1),reps:repsAlSubir(e,ls_),sube:true};
+  /* Sin subir la carga, la meta es una repetición más que la serie más floja de la última vez, hasta el tope */
+  return {kg:max,reps:Math.min(top,Math.max(e.r[0],Math.min(...ls_.map(s=>s.reps||0))+1)),sube:false};
 }
 const sugerida=e=>sugerencia(e).kg;
 const TXT_SUBIR='Subir la carga y bajar las repeticiones a la mitad para volver a construir hasta el tope es la estructura del programa: funciona y previene lesiones. Es una guía, la decisión es tuya.';
@@ -1823,26 +1844,85 @@ function renderProgreso(){
   const D=REAL?datosProg():DATOS, ejs=Object.keys(D);
   if(!ejs.includes(S.progEj))S.progEj=ejs[0]||'';
   $('#prog-c').innerHTML=`<div class="tt">Tu progreso</div>
-   <div class="seg" id="seg"><span class="seg-ind" style="transform:translateX(${S.progVista==='carga'?0:100}%)"></span><button data-v="carga" class="${S.progVista==='carga'?'on':''}">Cargas</button><button data-v="cons" class="${S.progVista==='cons'?'on':''}">Constancia</button></div>
+   <div class="seg" id="seg"><span class="seg-ind" style="transform:translateX(${S.progVista==='carga'?0:100}%)"></span><button data-v="carga" class="${S.progVista==='carga'?'on':''}">Ejercicios</button><button data-v="cons" class="${S.progVista==='cons'?'on':''}">Constancia</button></div>
    <div id="prog-cuerpo"></div>`;
   $('#seg').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.progVista=b.dataset.v;vibra(8);renderProgreso()};
   const cu=$('#prog-cuerpo');
-  if(S.progVista==='carga'&&!ejs.length){
-    cu.innerHTML=`<div class="card vacio">Todavía no hay cargas registradas.<br>Completá tu primera sesión y acá vas a ver cómo progresás en cada ejercicio.</div>`;
-  }else if(S.progVista==='carga'){
-    cu.innerHTML=`<div class="prog-split"><div class="prog-sel"><div class="card-label sel-lbl">Ejercicio</div><div class="chips-scroll">${ejs.map(n=>`<button class="chip ${n===S.progEj?'sel':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
-    <div class="prog-graf"><div class="grafico-card sep"><div class="grafico-head"><span class="grafico-tit">Carga de trabajo (kg)</span><span class="grafico-delta" id="g-delta"></span></div><div class="grafico-wrap" id="grafico"><svg viewBox="0 0 300 160"></svg><div class="tooltip" id="tooltip"></div></div><p class="nota-chica" style="margin-top:.4rem;text-align:center">Deslizá o tocá sobre el gráfico</p></div>
-    ${REAL?'':'<p class="nota-chica sep">En el perfil Explorador, este bloque muestra movilidad y sensaciones en vez de cargas.</p>'}</div></div>`;
-    cu.querySelector('.chips-scroll').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;S.progEj=b.dataset.e;vibra(8);renderProgreso()};
-    const datos=D[S.progEj];
-    if(datos.length<2){ $('#grafico').innerHTML=`<p class="vacio">Con una sesión más de este ejercicio vas a ver la curva.<br>Por ahora: <b>${fmt(datos[0][1])} kg</b> el ${datos[0][0]}.</p>`; $('#grafico').nextElementSibling.hidden=true; }
-    else grafico(datos);
+  if(S.progVista==='carga'){
+    /* Catálogo de tus ejercicios: la última vez y lo que te toca la próxima */
+    const lista=ejerciciosProg();
+    if(!lista.length){cu.innerHTML=`<div class="card vacio">Todavía no hay cargas registradas.<br>Completá tu primera sesión y acá vas a ver cada ejercicio con su última vez y lo que te toca la próxima.</div>`;return}
+    if(!lista.some(x=>x.n===S.progEj))S.progEj=lista[0].n;
+    cu.innerHTML=`<div class="prog-split"><div class="prog-sel"><input class="cin pe-busca" id="pe-q" placeholder="Buscar ejercicio" autocomplete="off" value="${esc(S.progQ||'')}"><div class="lista-mas" id="pe-l"></div></div>
+     <div class="prog-graf"><div class="pe-detalle" id="pe-d"></div></div></div>`;
+    const pinta=()=>{
+      const k=sinTilde((S.progQ||'').trim()); let grupo=null, h='';
+      lista.filter(x=>!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)).forEach(x=>{
+        if(x.pat!==grupo){grupo=x.pat;h+=`<div class="pk-pat">${esc(grupo)}</div>`}
+        h+=`<button class="pe-fila ${dos()&&x.n===S.progEj?'sel':''}" data-e="${esc(x.n)}"><span class="pe-n"><b>${esc(x.n)}</b><small>${x.ult?'Última · '+x.ult.f+': '+x.ult.txt:'Sin registros'}</small></span>${x.meta?`<span class="pe-prox"><small>Próxima</small><b class="${x.meta.sube?'sube':''}">${x.meta.corto}</b></span>`:''}</button>`;
+      });
+      $('#pe-l').innerHTML=h||'<p class="nota-chica">No hay ejercicios con ese nombre.</p>';
+    };
+    pinta();
+    $('#pe-q').addEventListener('input',e=>{S.progQ=e.target.value;pinta()});
+    $('#pe-l').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(!b)return;S.progEj=b.dataset.e;vibra(8);
+      if(dos()){pinta();detalleEj(S.progEj,$('#pe-d'))}
+      else sheet(`<div class="sheet-col pe-detalle" id="pe-sh"></div>`,()=>detalleEj(S.progEj,$('#pe-sh')));
+    });
+    if(dos())detalleEj(S.progEj,$('#pe-d'));
   }else{
     const total=REAL?S.days.length:3, m=REAL?metaSemanal():2, r=REAL?racha():4;
     const filasC=REAL?semanasConteo(4).map(w=>['Sem '+semIso(w.ini),Array.from({length:Math.max(total,w.cant)},(_,k)=>k<w.cant?1:0)]):SEMS;
     cu.innerHTML=`<div class="card"><div class="card-label">Constancia · últimas 4 semanas</div><div style="display:flex;flex-direction:column;gap:.7rem;margin-top:.9rem">${filasC.map(([s,d])=>`<div class="cons-fila"><span>${s}</span><span class="cons-dots">${d.map(x=>`<i class="${x?'ok':''}"></i>`).join('')}</span><span>${d.filter(Boolean).length}/${total}</span></div>`).join('')}</div></div>
     <div class="logro" style="margin-top:.8rem">${ico('flame')}<span>${r?`Racha de <b>${r} semana${r>1?'s':''}</b> cumpliendo al menos ${m} sesion${m>1?'es':''}.`:`Tu racha arranca cuando completes <b>${m} sesion${m>1?'es':''}</b> en una semana.`}</span></div>`;
   }
+}
+/* Ejercicios con registro (o del plan, en la demo), con la última vez y la meta de la próxima sesión */
+function ejerciciosProg(){
+  const nombres=new Set(REAL?[...S.hist.map(h=>h.ej),...Object.values(S.prog||{}).map(p=>p.ej)]:Object.values(S.plan).flatMap(p=>p.ej.map(e=>e.n)));
+  const orden=patronesBib();
+  return [...nombres].filter(Boolean).map(n=>{
+    const c=enCatalogo(n)||{}, e=ejPlan(n), ls_=lastSets(e), p=progDe(e);
+    let ult=null;
+    if(ls_.length)ult={f:lastFecha(e),txt:resumenSeries(ls_)};
+    else if(p&&p.uf)ult={f:ddmm(p.uf),txt:(p.uk?fmt(p.uk)+' kg × ':'')+(p.ur||0)};
+    return {n,pat:c.pat||e.pat||'Otros',niv:c.niv,ult,meta:metaProxima(e)};
+  }).sort((a,b)=>{const pa=orden.indexOf(a.pat),pb=orden.indexOf(b.pat);return ((pa<0?99:pa)-(pb<0?99:pb))||a.pat.localeCompare(b.pat)||a.n.localeCompare(b.n)});
+}
+/* El ejercicio como está en el plan (rango, series); si no está en el plan, rango 4–12 y las series de la última vez */
+function ejPlan(n){
+  for(const L of S.letras){const e=S.plan[L].ej.find(x=>x.n===n);if(e)return e}
+  const c=enCatalogo(n)||{}, u=REAL?ultimaVez({n}):null;
+  return {n,pat:c.pat||'',s:u?u.sets.length:3,r:[4,12],kg:0,lado:!!c.lado,reg:c.reg,prog:c.prog};
+}
+/* "70 kg × 7 · 7 · 6" (o "70 kg × 8" si todas las series iguales) */
+function resumenSeries(sets){
+  const kgs=[...new Set(sets.map(s=>s.kg||0))], reps=sets.map(s=>s.reps||0);
+  const r=new Set(reps).size===1?String(reps[0]):reps.join(' · ');
+  return kgs.length===1?(kgs[0]?fmt(kgs[0])+' kg × ':'')+r:sets.map(s=>(s.kg?fmt(s.kg)+'×':'')+(s.reps||0)).join(' · ');
+}
+/* Lo que te toca la próxima sesión, con el criterio del método */
+function metaProxima(e){
+  const ls_=lastSets(e); if(!ls_.length)return null;
+  const sg=sugerencia(e), kg=sg.kg?fmt(sg.kg)+' kg × ':'', pausas=ls_.some(s=>s.pausas>0), top=e.r[1];
+  const txt=sg.sube?`La última vez completaste el tope sin pausas: subís la carga y bajás las repeticiones a la mitad, para volver a construir hasta el tope.`
+    :pausas&&ls_.every(s=>(s.reps||0)>=top)?`Llegaste al tope, pero con pausas: repetí hasta lograrlo sin pausas.`
+    :sg.reps>=top?`Buscá el tope del rango (${top}) en todas las series, firme y sin pausas.`
+    :`Sumá una repetición: ${sg.reps} en todas las series, firme y sin pausas. Al llegar a ${top}, subís la carga.`;
+  return {sube:sg.sube,corto:kg+sg.reps+(e.lado?' c/l':''),largo:kg+sg.reps+' reps'+(e.lado?' por lado':''),txt};
+}
+/* Detalle de un ejercicio: meta, última vez serie por serie, primera vez, mejor carga y gráfico */
+function detalleEj(n,cont){
+  const e=ejPlan(n), c=enCatalogo(n)||{}, ls_=lastSets(e), p=progDe(e), m=metaProxima(e), D=REAL?datosProg():DATOS, g=D[n]||[];
+  const kgr=(k,r)=>(k?fmt(k)+' kg × ':'')+(r||0);
+  cont.innerHTML=`<div><h3 style="font-size:1.15rem">${esc(n)}</h3><p class="sub" style="margin-top:.2rem">${[c.pat,c.niv?'nivel '+c.niv:'',c.enf].filter(Boolean).map(esc).join(' · ')||'Fuera de la Biblioteca'}</p></div>
+   ${m?`<div class="pe-meta"><div class="card-label">Próxima sesión</div><div class="pe-big">${m.largo}</div><p>${m.txt}</p></div>`:''}
+   ${ls_.length?`<div><div class="card-label">Última vez · ${lastFecha(e)}</div><div class="pe-series">${ls_.map((s,j)=>`<div><span>Serie ${j+1}</span><b>${kgr(s.kg,s.reps)}${s.pausas>0?` · ${s.pausas} pausa${s.pausas>1?'s':''}`:''}</b></div>`).join('')}</div></div>`
+     :p&&p.uf?`<div><div class="card-label">Última vez · ${ddmm(p.uf)}</div><div class="pe-series"><div><span>Mejor serie</span><b>${kgr(p.uk,p.ur)}</b></div></div></div>`:''}
+   ${p?`<div class="pe-stats"><div class="presc"><div class="presc-lbl">Primera vez</div><div class="presc-val" style="font-size:.86rem">${kgr(p.pk,p.pr)}</div><small class="nota-chica">${ddmm(p.pf)}</small></div><div class="presc"><div class="presc-lbl">Mejor carga</div><div class="presc-val">${p.mk?fmt(p.mk)+' kg':'—'}</div></div><div class="presc"><div class="presc-lbl">Sesiones</div><div class="presc-val">${p.n||0}</div></div></div>`:''}
+   ${g.length>1?`<div class="grafico-card"><div class="grafico-head"><span class="grafico-tit">Carga de trabajo (kg)</span><span class="grafico-delta" id="g-delta"></span></div><div class="grafico-wrap" id="grafico"><svg viewBox="0 0 300 160"></svg><div class="tooltip" id="tooltip"></div></div></div>`
+     :g.length===1?'<p class="nota-chica">Con una sesión más vas a ver la curva de carga.</p>':''}`;
+  if(g.length>1)requestAnimationFrame(()=>grafico(g));
 }
 function grafico(datos){
   /* El viewBox sigue el ancho real: en iPad el gráfico crece sin agrandar los textos */
@@ -1952,19 +2032,23 @@ $('#pager').addEventListener('mouseup',e=>{if(e.target.closest('.step input')&&D
 $('#pager').addEventListener('input',e=>{
   const t=e.target.closest('.step input'); if(!t)return;
   const i=+t.closest('.pg').dataset.i, j=+t.closest('.serie').dataset.j, f=t.parentNode.dataset.f, v=valorStep(f,t.value);
-  if(v!=null){S.ses.ex[i].sets[j][f]=v;guardaSesLocal()}
+  if(v!=null){S.ses.ex[i].sets[j][f]=v;S.ses.ex[i].sets[j].editada=true;guardaSesLocal()}
 });
 $('#pager').addEventListener('change',e=>{const t=e.target.closest('.step input');if(t)pintaSeries(+t.closest('.pg').dataset.i)});
 $('#pager').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.step input'))e.target.blur()});
-/* − y + : un toque cambia de a uno; mantener apretado repite */
+/* − y + : el cambio se aplica al SOLTAR el dedo (un toque = de a uno); mantener apretado sin mover repite.
+   Si el dedo se mueve (deslizar la pantalla o pasar de ejercicio) no cambia nada: así no se tocan números sin querer. */
 $('#pager').addEventListener('pointerdown',e=>{
   const st=e.target.closest('.step button'); if(!st)return;
   const pg=st.closest('.pg'), row=st.closest('.serie'), i=+pg.dataset.i, j=+row.dataset.j, f=st.parentNode.dataset.f, d=st.dataset.d==='+'?1:-1;
-  const apply=()=>{const s=S.ses.ex[i].sets[j]; if(f==='kg')s.kg=Math.max(0,+(s.kg+d*2.5).toFixed(1)); else s.reps=Math.max(0,s.reps+d); vibra(5); pintaSeries(i); guardaSesLocal()};
-  apply(); let rep=null; const t=setTimeout(()=>{rep=setInterval(apply,110)},420);
-  stopRep=()=>{clearTimeout(t);clearInterval(rep);stopRep=null};
+  const apply=()=>{const s=S.ses.ex[i].sets[j]; if(f==='kg')s.kg=Math.max(0,+(s.kg+d*2.5).toFixed(1)); else s.reps=Math.max(0,s.reps+d); s.editada=true; vibra(5); pintaSeries(i); guardaSesLocal()};
+  const x0=e.clientX, y0=e.clientY; let rep=null, repitio=false;
+  const t=setTimeout(()=>{repitio=true;apply();rep=setInterval(apply,110)},450);
+  const fin=()=>{clearTimeout(t);clearInterval(rep);document.removeEventListener('pointermove',mover);document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',fin)};
+  const mover=ev=>{if(!repitio&&(Math.abs(ev.clientX-x0)>8||Math.abs(ev.clientY-y0)>8))fin()};
+  const up=ev=>{fin(); if(!repitio&&ev.target.closest&&ev.target.closest('.step button')===st)apply()};
+  document.addEventListener('pointermove',mover); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',fin);
 });
-['pointerup','pointercancel'].forEach(ev=>document.addEventListener(ev,()=>stopRep&&stopRep()));
 $('#pager').addEventListener('click',e=>{
   const pg=e.target.closest('.pg'); if(!pg)return; const i=+pg.dataset.i, ex=S.ses.ex[i];
   const sg=e.target.closest('.pg-seg button');
@@ -1974,7 +2058,7 @@ $('#pager').addEventListener('click',e=>{
     const act=a.dataset.a;
     if(act==='video'){ verVideo(ex); }
     else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done){s.kg=c.sube;s.reps=c.subeReps}}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack(fmt(c.sube)+' kg × '+c.subeReps+'. Si aparecen pausas, volvé a la carga anterior'); }
-    else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
+    else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps;s.editada=true}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
       let lista;
       const cad=REAL&&S.cat[ex.n]&&S.cat[ex.n].cad!=null?S.cadenas[S.cat[ex.n].cad]:null;
@@ -2000,7 +2084,7 @@ $('#pager').addEventListener('click',e=>{
   if(e.target.closest('.serie-ok')){
     s.done=!s.done; vibra(s.done?[12,30,12]:6);
     if(s.done){
-      const sig=ex.sets[j+1]; if(sig&&!sig.done){sig.kg=s.kg;sig.reps=s.reps}   // la próxima serie arranca con lo que acabás de hacer
+      const sig=ex.sets[j+1]; if(sig&&!sig.done&&!sig.editada){sig.kg=s.kg;sig.reps=s.reps}   // la próxima serie arranca con lo que acabás de hacer, salvo que ya la hayas cargado a mano
       const mejor=mejorKg(ex);
       if(s.kg>mejor&&mejor>0&&!ex.pr){ex.pr=true;S.ses.prs++;setTimeout(()=>{snack('Nueva marca en '+ex.n+': '+fmt(s.kg)+' kg');vibra([20,50,20,50,80])},200)}
       pintaSeries(i); const c=circuitos(S.ses.ex)[i];
