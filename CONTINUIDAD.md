@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **02/11/2026**, después del PR #9.
+Última actualización: **04/11/2026**, después de la segunda sesión de prueba de Luca (PR #10).
 
 ---
 
@@ -97,6 +97,7 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
 ## 5. El método de Luca, como lo aplica la app
 
 - **Rango de repeticiones:** de 4 a 12 por defecto, ajustable en cada ejercicio.
+- **Meta de cada sesión (sin subir la carga):** el mismo peso y **una repetición más** que la serie más floja de la última vez, hasta el tope del rango. Por ejemplo, 70 kg × 7 → 70 kg × 8. La sesión arranca cargada con esa meta.
 - **Subir carga:** se sugiere cuando **una** sesión completa el tope en todas las series, firme y **sin pausas** (y con RIR 2 o más, si se anota).
   - La carga sube 2,5 kg, o 1 kg si es menor a 10 kg.
   - Las reps bajan **siempre a la mitad** de las últimas. Si el número es impar, se redondea para abajo: 12 → 6, 9 → 4.
@@ -135,7 +136,12 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - avisos de progresión y la cadena completa en Regresión/Progresión;
   - técnica y video;
   - cierre de la sesión.
-- **Progreso:** carga máxima por sesión de cada ejercicio, y constancia.
+- **Progreso → Ejercicios:**
+  - un catálogo de tus ejercicios, agrupado por patrón y con buscador;
+  - cada uno muestra la última vez y **la próxima meta**;
+  - al tocarlo: la meta explicada, la última vez serie por serie, la primera vez, la mejor carga, la cantidad de sesiones y el gráfico de carga;
+  - en iPad horizontal, la lista y el detalle se ven lado a lado.
+- **Progreso → Constancia:** las últimas 4 semanas y la racha.
 - **Más:** instalar, registro de esfuerzo, estética, sincronizar, suscripción (vencimiento y monto) y cerrar sesión.
 
 ## 7. Registro de bugs
@@ -146,6 +152,7 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 - Ninguno conocido.
 
 ### Resueltos
+- 04/11 · Las reps o los kg cambiaban sin querer. Había dos causas: el − y el + reaccionaban al apenas apoyar el dedo, incluso al deslizar la pantalla; y al marcar una serie se pisaba la siguiente aunque ya estuviera cargada a mano. Ahora el cambio se aplica al soltar el dedo, si no se movió, y una serie cargada a mano no se pisa → **PR #10**.
 - 02/11 · Al guardar una sesión editada, al empezarla aparecían cargas viejas: el historial le ganaba al plan → **PR #4**.
 - 02/11 · Cambiar días obligaba a tener la misma cantidad de días que de sesiones → **PR #3**.
 - 02/11 · El Panel con fórmulas daba `#ERROR!` en la planilla real; ahora lo calcula el proxy → **PR #7**.
@@ -163,6 +170,8 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 
 ### Para validar con el uso
 - La regla de carga y la mitad de las reps.
+- La meta de +1 repetición por sesión y el catálogo de Progreso.
+- Que ya no cambien números sin querer al deslizar.
 - El aviso para retroceder (2 sesiones).
 - Los textos de RIR/RPE, la versión liviana y el cierre.
 - **Entrar con Google desde la app instalada en el iPad** (nunca probado).
