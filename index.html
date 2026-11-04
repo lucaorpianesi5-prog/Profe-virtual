@@ -501,6 +501,9 @@ button:active{transition:transform .1s}
 .pe-series span{color:var(--texto3)}
 .pe-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem}
 .pe-detalle{display:flex;flex-direction:column;gap:.85rem}
+.version{font-size:.66rem;color:var(--texto3);text-align:center;line-height:1.6;padding:.6rem 0 .2rem;font-variant-numeric:tabular-nums}
+.version b{font-weight:600;color:var(--texto2)}
+#inicio-c .version{grid-column:1/-1}
 .consejo{display:flex;gap:.6rem;align-items:flex-start;background:var(--card2);border:1px solid var(--borde2);border-radius:14px;padding:.75rem .85rem;font-size:.8rem;line-height:1.5;color:var(--texto2)}
 .consejo>.ic{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:var(--acento)}
 .consejo.atras>.ic{color:var(--amber)}
@@ -909,6 +912,8 @@ const fmt=v=>String(v).replace('.',',');
 
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
+/* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
+const VERSION_APP='1.11 · 04/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1257,6 +1262,7 @@ function renderApp(){
    :REAL?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Luca está armando tu plan</div><div class="sesion-meta">Cuando lo cargue, lo vas a ver acá. Si ya te avisó que está listo, volvé a abrir la app.</div></div>`
    :`<div class="hoy-card"><div class="card-label">Hoy · miércoles</div><div class="sesion-tit">Hoy descansás ${ico('moon')}</div><div class="sesion-meta">El descanso también es entrenamiento.</div></div>`}
    <div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="card-label">Esta semana</div><div style="font-size:.76rem;color:var(--texto2)"><b style="color:var(--texto)">${hechos.size} de ${S.days.length}</b>${r>1?` · racha ${r} semanas`:''}</div></div><div class="semana">${semanaHTML(true)}</div></div>
+   ${versionHTML()}
    ${REAL?'':`<button class="tip" id="tip-mov"><span class="tip-icono">${ico('activity')}</span><div><div class="tip-tit">Trabajás sentada muchas horas</div><div class="tip-txt ejemplo">Dos minutos de movilidad de cadera cada hora compensan más que una sesión larga el fin de semana.</div><div class="tip-mas">Ver cómo ${ico('chev')}</div></div></button>`}`;
   const b=$('#btn-ses'); if(b)b.onclick=()=>abrirCheckin(l);
   if($('#btn-armar1'))$('#btn-armar1').onclick=()=>abrirArmar(null);
@@ -1727,6 +1733,12 @@ function borrarSesionPlan(){
   });
 }
 
+/* Versión de la app y del proxy (para saber si ya se cargó lo último) */
+function versionHTML(){
+  const px=!REAL?'':S.verProxy?`<br>Proxy <b>${esc(S.verProxy)}</b>`:'<br>Proxy: versión anterior a 1.11 (sin número)';
+  return `<p class="version">App <b>${VERSION_APP}</b>${px}</p>`;
+}
+
 /* Más */
 const ESF_NOM={nada:'Nada',rir:'RIR',rpe:'RPE',ambos:'RIR + RPE'};
 const SALTOS=[['landing','Landing'],['iv','Entrevista'],['perfil','Perfil'],['plan','Plan'],['inicio','Inicio'],['sesion','Sesión'],['progreso','Progreso']];
@@ -1745,7 +1757,7 @@ function renderMas(){
     <button class="sust-op" id="m-sub"><span>${ico('card')}Mi suscripción</span><small>${REAL?venc:'Activa'}</small></button>
     ${REAL?`<button class="sust-op" id="m-salir"><span>${ico('back')}Cerrar sesión</span><small></small></button>`
           :`<button class="sust-op" id="m-reset"><span>${ico('refresh')}Reiniciar demo</span><small></small></button>`}
-   </div><p class="nota-chica">${REAL?'Tus sesiones se guardan primero en este dispositivo y después en el registro de Luca: si entrenás sin señal, se suben solas cuando vuelve la conexión.':'Más reúne lo que no se usa a diario: suscripción, ajustes y la re-entrevista de cada mesociclo.'}</p>`;
+   </div><p class="nota-chica">${REAL?'Tus sesiones se guardan primero en este dispositivo y después en el registro de Luca: si entrenás sin señal, se suben solas cuando vuelve la conexión.':'Más reúne lo que no se usa a diario: suscripción, ajustes y la re-entrevista de cada mesociclo.'}</p>${versionHTML()}`;
   $('#m-inst').onclick=abrirInstalar;
   $('#m-esf').onclick=()=>sheetEsfuerzo('mas');
   $('#m-est').onclick=()=>abrirDemo('est');
@@ -2256,10 +2268,11 @@ const MSJ={
 /* Sin código = no llegó a la planilla (sin conexión). Con un código que no conocemos, se muestra el error real: nunca se disfraza de "sin conexión". */
 const mensajeError=e=>MSJ[e.code]?MSJ[e.code](e):e.code?'La planilla respondió con un error: '+(e.message||e.code):'No hay conexión con el registro de Luca. Probá de nuevo en un rato.';
 
-function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,version:S.verProxy,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
   S.alumno=d.alumno; S.planCrudo=d.plan||[];
   S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
+  S.verProxy=d.version||'';
   S.cadenas=d.cadenas||[]; S.patrones=d.patrones||[]; S.enfoques=d.enfoques||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});
