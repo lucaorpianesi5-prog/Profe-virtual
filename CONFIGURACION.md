@@ -205,6 +205,8 @@ Si la sesión se editó desde la app **después** del último registro de ese ej
 
 **Meta de cada sesión:** si no corresponde subir la carga, la sesión arranca con el mismo peso y **una repetición más** que la serie más floja de la última vez, hasta el tope (70 kg × 7 → 70 kg × 8). La misma meta se ve en **Progreso → Ejercicios**.
 
+**Con margen:** si en todas las series quedaron 3 o más repeticiones en reserva (RIR 3+, o RPE 7 o menos) y sin pausas, la próxima sesión arranca con **+2 repeticiones**, y el aviso ofrece subir **un escalón** de carga con la mitad de las reps. El aumento de peso es siempre de a un escalón. Solo aplica si se registra el esfuerzo.
+
 **Recomendación al empezar cada ejercicio** (el alumno siempre decide):
 - La última vez completó el tope en todas las series **sin pausas** → la carga ya viene subida y las repeticiones bajan **siempre a la mitad** de las últimas, aunque quede debajo del rango del ejercicio (12 × 50 kg → 6 × 52,5 kg; de 8 → 4; con un número impar se redondea para abajo, para que quede margen: 9 → 4), para volver a construir hasta el tope. La app lo presenta como la estructura del programa, que funciona y previene lesiones, y aclara que la decisión es del alumno. Si hay un nivel siguiente en la cadena, también se ofrece pasar a él.
 - Llegó al tope pero **con pausas** → la app recomienda repetir la carga hasta lograrlo sin pausas, con un botón **Subir igual** por si prefiere avanzar.
