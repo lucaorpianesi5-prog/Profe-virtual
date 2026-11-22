@@ -504,6 +504,21 @@ button:active{transition:transform .1s}
 .version{font-size:.66rem;color:var(--texto3);text-align:center;line-height:1.6;padding:.6rem 0 .2rem;font-variant-numeric:tabular-nums}
 .version b{font-weight:600;color:var(--texto2)}
 #inicio-c .version{grid-column:1/-1}
+.map-fila{display:flex;align-items:stretch;gap:.45rem}
+.map-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:.15rem;text-align:left;background:var(--card);border:1.5px solid var(--borde2);border-radius:var(--radio);padding:.7rem .85rem;min-height:56px;justify-content:center}
+.map-info b{font-size:.9rem;line-height:1.25}
+.map-info small{font-size:.68rem;color:var(--texto3);font-variant-numeric:tabular-nums;line-height:1.35}
+.map-info small.aca{color:var(--acento);font-weight:700}
+.map-add{width:52px;flex-shrink:0;border-radius:var(--radio);border:1.5px dashed var(--borde2);display:flex;align-items:center;justify-content:center;color:var(--texto2)}
+.map-add .ic{width:20px;height:20px}
+.map-add.on{background:var(--acento);border:1.5px solid var(--acento);color:var(--sobre-acento)}
+.map-sel{font-size:.74rem;color:var(--texto2);line-height:1.4;display:flex;align-items:center;gap:.5rem}
+.map-sel span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-sel button{min-height:40px;font-weight:700;color:var(--texto3);padding:0 .3rem}
+#map-pat,#map-enf{margin:0}
+#map-c>*{flex-shrink:0}
+:root[data-lay="tabh"] #map-l{display:grid;grid-template-columns:1fr 1fr;gap:.55rem 1rem}
+:root[data-lay="tabh"] #map-l .pk-pat{grid-column:1/-1}
 .consejo{display:flex;gap:.6rem;align-items:flex-start;background:var(--card2);border:1px solid var(--borde2);border-radius:14px;padding:.75rem .85rem;font-size:.8rem;line-height:1.5;color:var(--texto2)}
 .consejo>.ic{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:var(--acento)}
 .consejo.atras>.ic{color:var(--amber)}
@@ -844,11 +859,13 @@ button:active{transition:transform .1s}
   <section class="scr" id="app">
     <div class="tab-v on" id="t-inicio"><div class="scroll" id="inicio-c"></div></div>
     <div class="tab-v" id="t-plan"><div class="scroll" id="plan-c"></div><div class="foot" id="plan-foot" style="padding-bottom:.7rem;display:none"></div></div>
+    <div class="tab-v" id="t-mapeo"><div class="scroll" id="map-c"></div><div class="foot" id="map-foot" style="padding-bottom:.7rem" hidden></div></div>
     <div class="tab-v" id="t-progreso"><div class="scroll" id="prog-c"></div></div>
     <div class="tab-v" id="t-mas"><div class="scroll" id="mas-c"></div></div>
     <nav class="tabbar" id="tabbar">
       <button class="on" data-t="inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/></svg>Inicio</button>
-      <button data-t="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Mi plan</button>
+      <button data-t="plan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>Programas</button>
+      <button data-t="mapeo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Mapeo</button>
       <button data-t="progreso"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Progreso</button>
       <button data-t="mas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Más</button>
     </nav>
@@ -913,7 +930,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.11 · 04/11/2026';
+const VERSION_APP='1.12 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1208,6 +1225,7 @@ $('#btn-empezar').onclick=()=>{S.tab='inicio';renderApp();setTab('inicio');show(
 function setTab(t){
   S.tab=t; $$('.tab-v').forEach(v=>v.classList.toggle('on',v.id==='t-'+t)); $$('#tabbar button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); vibra(6);
   if(t==='progreso')renderProgreso();
+  if(t==='mapeo')renderMapeo();
 }
 $('#tabbar').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setTab(b.dataset.t)});
 
@@ -1426,7 +1444,7 @@ function sigCircuito(i,c){
 function renderMiPlan(){
   const sel=S.planDia, k=S.days.indexOf(sel), L=letraDia(k), pl=L&&S.plan[L], esHoy=sel===HOY, hechos=diasHechos();
   const hay=pl?pl.ej.reduce((a,e)=>a+e.s,0):0;
-  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Mi plan</div><div class="sub-t">${REAL?S.days.length+(S.days.length>1?' días':' día')+' por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
+  $('#plan-c').innerHTML=`<div class="mp-izq"><div class="tt">Programas</div><div class="sub-t">${REAL?S.days.length+(S.days.length>1?' días':' día')+' por semana':$('#plan-tit').textContent+' · semana 3 de 6'} · <button id="btn-dias" style="min-height:44px;padding:0 .2rem">Cambiar días</button></div>
   <div class="week-sel" id="week-sel">${LET.map((l,i)=>{const kk=S.days.indexOf(i);return `<button data-d="${i}" class="${i===sel?'sel':''} ${kk>=0?'on':''} ${i===HOY?'hoy':''} ${hechos.has(i)?'hecho':''}"><small>${l}</small><span class="dn">${DIAS_N[i]}</span><b>${letraDia(kk)||'·'}</b></button>`}).join('')}</div>
   ${puedeArmar()?`<div class="ar-sesiones"><div class="card-label">Tus sesiones</div><div class="ar-chips">${S.letras.map(x=>`<button class="ar-chip" data-armar="${x}"><b>${x}</b><span>${esc(S.plan[x].meta)}</span>${ico('edit')}</button>`).join('')}<button class="ar-chip nueva" data-armar="">${ico('plus')}Armar sesión</button></div></div>`:''}</div>
   <div class="mp-der">${pl?`<div><div class="card-label">${DIAS_N[sel]}${esHoy?' · hoy':''}</div><div class="sesion-tit">Sesión ${L} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${hay} series</div></div>
@@ -1620,19 +1638,27 @@ function elegirEjercicio(i,patIni){
   });
 }
 /* Agrega (i == null) o cambia (i) un ejercicio de la sesión que se está armando */
+function ejNuevoArmado(n,lado){
+  const c=enCatalogo(n), ld=lado!=null?lado:(c&&c.lado), kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
+  return {n,s:'3',rmin:'4',rmax:'12',seg:false,lado:!!ld,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''};
+}
+/* Abre el editor (sesión nueva o una existente) con varios ejercicios ya agregados: lo usa Mapeo */
+function armarCon(nombres,L){
+  abrirArmar(L||null); if(!AR)return;
+  nombres.forEach(n=>AR.ej.push(ejNuevoArmado(n)));
+  marcar(); renderArmar(); setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},80);
+}
 function ponerEnArmado(n,i,lado){
   const c=enCatalogo(n), ld=lado!=null?lado:(c&&c.lado);
-  if(i==null){
-    const kg=REAL?sugerida({n,s:3,r:[4,12],kg:0}):0;
-    AR.ej.push({n,s:'3',rmin:'4',rmax:'12',seg:false,lado:!!ld,d:'90',kg:kg?fmt(kg):'',b:'',notas:'',porPlan:''});
-  } else { AR.ej[i].n=n; if(ld!=null)AR.ej[i].lado=!!ld }
+  if(i==null) AR.ej.push(ejNuevoArmado(n,lado));
+  else { AR.ej[i].n=n; if(ld!=null)AR.ej[i].lado=!!ld }
   marcar(); cerrar(); vibra(10); renderArmar();
   if(i==null)setTimeout(()=>{const c=$$('#ar-c .ar-ej').pop();c&&c.scrollIntoView({behavior:'smooth',block:'center'})},60);
 }
 /* Ejercicio nuevo: se suma a la Biblioteca con patrón, enfoque y lugar en la progresión (o solo a esta sesión) */
 const PATRONES_DEF=['Bisagra de Cadera','Bisagra de Rodilla','Core','Tracción','Empuje','Tren superior','Tren inferior','Full body'];
 const ENFOQUES_DEF=['Fuerza','Amplitud de Movimiento','Activación','Potencia','Equilibrio y Coordinación','Resistencia'];
-function altaBiblioteca(nombre,i,patIni){
+function altaBiblioteca(nombre,i,patIni,desdeMapeo){
   const pats=(S.patrones&&S.patrones.length?S.patrones:PATRONES_DEF), enfs=(S.enfoques&&S.enfoques.length?S.enfoques:ENFOQUES_DEF);
   const st={pat:pats.includes(patIni)?patIni:'',enf:'',pos:'',lado:false};
   sheet(`<div class="sheet-col"><div><h3>Ejercicio nuevo</h3><p class="sub">Sumalo a la Biblioteca: queda en el catálogo para otras sesiones, con su lugar en la progresión.</p></div>
@@ -1642,7 +1668,7 @@ function altaBiblioteca(nombre,i,patIni){
     <div id="nb-pos"></div>
     <button class="ar-lado" id="nb-lado" aria-pressed="false"><i>${ico('check')}</i>Por lado (unilateral)</button>
     <button class="btn" id="nb-ok" disabled>Agregar a la Biblioteca</button>
-    <button class="btn sec chico" id="nb-solo">Usar solo en esta sesión</button></div>`,()=>{
+    ${desdeMapeo?'':'<button class="btn sec chico" id="nb-solo">Usar solo en esta sesión</button>'}</div>`,()=>{
     const pinta=()=>{
       $('#nb-ok').disabled=!(st.pat&&st.enf&&$('#nb-n').value.trim());
       if(!st.pat||!st.enf){$('#nb-pos').innerHTML='<p class="nota-chica">Elegí patrón y enfoque para ver dónde va en la progresión.</p>';return}
@@ -1664,7 +1690,7 @@ function altaBiblioteca(nombre,i,patIni){
     $('#nb-pos').addEventListener('click',e=>{const b=e.target.closest('[data-pos]');if(!b)return;st.pos=b.dataset.pos;vibra(6);pinta()});
     $('#nb-n').addEventListener('input',pinta);
     $('#nb-lado').onclick=()=>{st.lado=!st.lado;$('#nb-lado').classList.toggle('on',st.lado);$('#nb-lado').setAttribute('aria-pressed',st.lado)};
-    $('#nb-solo').onclick=()=>ponerEnArmado($('#nb-n').value.trim().slice(0,80)||nombre,i,st.lado);
+    if($('#nb-solo'))$('#nb-solo').onclick=()=>ponerEnArmado($('#nb-n').value.trim().slice(0,80)||nombre,i,st.lado);
     $('#nb-ok').onclick=async()=>{
       const n=$('#nb-n').value.trim().slice(0,80), [lado,junto]=st.pos?st.pos.split('|'):['',''];
       if(enCatalogo(n)&&Object.values(S.cat).some(c=>sinTilde(c.n)===sinTilde(n)&&c.cad!=null)){snack('"'+n+'" ya está en la Biblioteca');return}
@@ -1677,11 +1703,93 @@ function altaBiblioteca(nombre,i,patIni){
         if(c){c.ej.splice(lado==='antes'?c.ej.indexOf(junto):c.ej.indexOf(junto)+1,0,n)} else {c={pat:st.pat,enf:st.enf,ej:[n]};S.cadenas.push(c)}
         const ci=S.cadenas.indexOf(c); c.ej.forEach((x,k)=>{S.cat[x]={...(S.cat[x]||{n:x,video:'',como:[],err:'',mus:[],por:''}),pat:c.pat,enf:c.enf,cad:ci,niv:k+1,reg:c.ej[k-1]||'',prog:c.ej[k+1]||'',...(x===n?{lado:st.lado}:{})}});
       }
-      ponerEnArmado(n,i,st.lado); snack(n+' agregado a la Biblioteca');
+      if(desdeMapeo){cerrar();renderMapeo()} else ponerEnArmado(n,i,st.lado);
+      snack(n+' agregado a la Biblioteca');
     };
     pinta();
   });
 }
+/* ───────── Mapeo: la Biblioteca como base de datos, con filtros, detalle y selección para armar sesiones ───────── */
+S.map={pat:'',enf:'',q:'',hechos:false,sel:[]};
+function itemsMapeo(){
+  const items=[], visto=new Set();
+  (S.cadenas||[]).forEach((c,ci)=>c.ej.forEach((n,k)=>{visto.add(sinTilde(n));items.push({n,pat:c.pat||'Sin patrón',enf:c.enf||'',niv:k+1,tot:c.ej.length,ci})}));
+  const otro=(n,pat)=>{if(!n||visto.has(sinTilde(n)))return;visto.add(sinTilde(n));items.push({n,pat:pat||'Otros',enf:''})};
+  Object.values(S.cat||{}).forEach(c=>otro(c.n,REAL?'Otros':c.pat));
+  if(!REAL){Object.entries(ALT).forEach(([pat,l])=>l.forEach(([n])=>otro(n,pat)));Object.values(S.plan).forEach(p=>p.ej.forEach(e=>otro(e.n,e.pat)))}
+  const orden=patronesBib(), pos=x=>{const k=orden.indexOf(x.pat);return x.pat==='Otros'?999:k<0?500:k};
+  return items.sort((a,b)=>(pos(a)-pos(b))||(pos(a)===500?a.pat.localeCompare(b.pat):0));
+}
+const hiceEj=n=>REAL&&(S.hist.some(h=>h.ej===n)||!!(S.prog&&S.prog[kEj(n)]));
+function renderMapeo(){
+  const M=S.map, its=itemsMapeo(), pats=[...new Set(its.map(x=>x.pat))], enfs=[...new Set(its.map(x=>x.enf).filter(Boolean))], armar=puedeArmar();
+  if(M.pat&&!pats.includes(M.pat))M.pat=''; if(M.enf&&!enfs.includes(M.enf))M.enf='';
+  const chips=(id,vals,act)=>`<div class="pk-enf" id="${id}"><button data-v="" class="${!act?'on':''}">Todos</button>${vals.map(v=>`<button data-v="${esc(v)}" class="${v===act?'on':''}">${esc(v)}</button>`).join('')}</div>`;
+  $('#map-c').innerHTML=`<div class="tt">Mapeo</div><p class="sub-t" style="margin:0">${its.length} ejercicios en la Biblioteca${armar?' · tocá + para elegir y armar una sesión':''}</p>
+   <input class="cin" id="map-q" placeholder="Buscar ejercicio" autocomplete="off" value="${esc(M.q)}">
+   <div><div class="card-label" style="margin-bottom:.4rem">Patrón</div>${chips('map-pat',pats,M.pat)}</div>
+   ${enfs.length?`<div><div class="card-label" style="margin-bottom:.4rem">Enfoque</div>${chips('map-enf',enfs,M.enf)}</div>`:''}
+   ${REAL?`<button class="ar-lado ${M.hechos?'on':''}" id="map-hechos" aria-pressed="${M.hechos}"><i>${ico('check')}</i>Solo los que ya hice</button>`:''}
+   <div class="lista-mas" id="map-l"></div>
+   ${armar?`<button class="btn sec chico" id="map-nuevo">${ico('plus')}Ejercicio nuevo en la Biblioteca</button>`:''}`;
+  const pinta=()=>{
+    const k=sinTilde(M.q.trim()), aca=REAL?nivelesActuales():{}; let grupo=null, h='';
+    its.filter(x=>(!M.pat||x.pat===M.pat)&&(!M.enf||x.enf===M.enf)&&(!k||sinTilde(x.n).includes(k))&&(!M.hechos||hiceEj(x.n))).forEach(x=>{
+      if(x.pat!==grupo){grupo=x.pat;h+=`<div class="pk-pat">${esc(grupo)}</div>`}
+      const e=ejPlan(x.n), m=REAL?metaProxima(e):null, p=REAL?progDe(e):null, ls_=REAL?lastSets(e):[];
+      const ult=ls_.length?lastFecha(e)+': '+resumenSeries(ls_):p&&p.uf?ddmm(p.uf)+': '+(p.uk?fmt(p.uk)+' kg × ':'')+(p.ur||0):'';
+      const esAca=x.ci!=null&&aca[x.ci]===x.n, sel=M.sel.includes(x.n);
+      h+=`<div class="map-fila"><button class="map-info" data-ver="${esc(x.n)}"><b>${esc(x.n)}</b>
+        <small class="${esAca?'aca':''}">${[x.niv?'Nivel '+x.niv+' de '+x.tot:'',x.enf,esAca?'Estás acá':''].filter(Boolean).map(esc).join(' · ')||'Sin cadena'}</small>
+        ${ult?`<small>Última ${ult}${m?' → Próxima '+m.corto:''}</small>`:''}</button>
+        ${armar?`<button class="map-add ${sel?'on':''}" data-add="${esc(x.n)}" aria-label="${sel?'Quitar de':'Agregar a'} la selección" aria-pressed="${sel}">${ico(sel?'check':'plus')}</button>`:''}</div>`;
+    });
+    $('#map-l').innerHTML=h||'<p class="nota-chica">No hay ejercicios con esos filtros.</p>';
+  };
+  pinta(); pintaFootMapeo();
+  $('#map-q').addEventListener('input',e=>{M.q=e.target.value;pinta()});
+  const filtro=(id,k)=>$(id)&&$(id).addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;M[k]=b.dataset.v;$$(id+' button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
+  filtro('#map-pat','pat'); filtro('#map-enf','enf');
+  if($('#map-hechos'))$('#map-hechos').onclick=e=>{M.hechos=!M.hechos;e.currentTarget.classList.toggle('on',M.hechos);vibra(6);pinta()};
+  if($('#map-nuevo'))$('#map-nuevo').onclick=()=>altaBiblioteca(M.q.trim(),null,M.pat,true);
+  $('#map-l').addEventListener('click',e=>{
+    const a=e.target.closest('[data-add]'); if(a){selMapeo(a.dataset.add);pinta();return}
+    const v=e.target.closest('[data-ver]'); if(v)verMapeo(v.dataset.ver);
+  });
+}
+function selMapeo(n){const s=S.map.sel, k=s.indexOf(n); if(k>=0)s.splice(k,1); else s.push(n); vibra(8); pintaFootMapeo()}
+/* Barra de abajo con lo elegido: armar una sesión nueva o sumarlo a una existente */
+function pintaFootMapeo(){
+  const f=$('#map-foot'), sel=S.map.sel; f.hidden=!sel.length||!puedeArmar(); if(f.hidden)return;
+  f.innerHTML=`<div class="map-sel"><span><b>${sel.length}</b> elegido${sel.length>1?'s':''}: ${sel.map(esc).join(', ')}</span><button id="map-limpiar">Limpiar</button></div>
+   <div class="foot-row">${S.letras.length?`<button class="btn sec" id="map-exist" style="flex:0 0 42%">A una sesión</button>`:''}<button class="btn" id="map-nueva">Armar sesión (${sel.length})</button></div>`;
+  $('#map-limpiar').onclick=()=>{S.map.sel=[];renderMapeo()};
+  $('#map-nueva').onclick=()=>{const ns=[...sel];S.map.sel=[];pintaFootMapeo();armarCon(ns,null)};
+  if($('#map-exist'))$('#map-exist').onclick=()=>sheet(`<div class="sheet-col"><div><h3>¿A qué sesión?</h3><p class="sub">Se suman ${sel.length===1?'el ejercicio elegido':'los '+sel.length+' ejercicios elegidos'} al final; después ajustás series y reps.</p></div><div class="lista-mas">${S.letras.map(L=>`<button class="sust-op" data-l="${L}"><span><b class="num">${L}</b>${esc(S.plan[L].meta)}</span><small>${S.plan[L].ej.length} ejercicios</small></button>`).join('')}</div></div>`,()=>{
+    $$('#sheet-c [data-l]').forEach(b=>b.onclick=()=>{const ns=[...sel];S.map.sel=[];cerrar();pintaFootMapeo();armarCon(ns,b.dataset.l)});
+  });
+}
+/* Detalle de un ejercicio: cadena completa (se puede saltar de nivel), tu última vez y meta, y la ficha de técnica */
+function verMapeo(n){
+  const c=enCatalogo(n)||S.cat[n]||{n}, cad=c.cad!=null&&S.cadenas?S.cadenas[c.cad]:null, aca=REAL&&cad?nivelesActuales()[c.cad]:null;
+  const e=ejPlan(n), m=REAL?metaProxima(e):null, p=REAL?progDe(e):null, ls_=REAL?lastSets(e):[], sel=S.map.sel.includes(n);
+  const ficha=(c.como&&c.como.length)||!REAL;
+  const kgr=(k,r)=>(k?fmt(k)+' kg × ':'')+(r||0);
+  sheet(`<div class="sheet-col pe-detalle"><div><h3 style="font-size:1.15rem">${esc(n)}</h3><p class="sub" style="margin-top:.2rem">${[c.pat,c.enf,c.niv&&cad?'nivel '+c.niv+' de '+cad.ej.length:'',c.lado?'por lado':''].filter(Boolean).map(esc).join(' · ')||'Fuera de la Biblioteca'}</p></div>
+   ${m?`<div class="pe-meta"><div class="card-label">Tu próxima sesión</div><div class="pe-big">${m.largo}</div><p>${m.txt}</p></div>`:''}
+   ${ls_.length?`<div><div class="card-label">Tu última vez · ${lastFecha(e)}</div><div class="pe-series">${ls_.map((s,j)=>`<div><span>Serie ${j+1}</span><b>${kgr(s.kg,s.reps)}${s.pausas>0?` · ${s.pausas} pausa${s.pausas>1?'s':''}`:''}</b></div>`).join('')}</div></div>`
+     :p&&p.uf?`<div><div class="card-label">Tu última vez · ${ddmm(p.uf)}</div><div class="pe-series"><div><span>Mejor serie</span><b>${kgr(p.uk,p.ur)}</b></div></div></div>`:REAL?'<p class="nota-chica">Todavía no lo hiciste.</p>':''}
+   ${cad?`<div><div class="card-label" style="margin-bottom:.45rem">Cadena · de lo más simple a lo más exigente</div><div class="lista-mas">${cad.ej.map((x,k)=>`<button class="sust-op cad-op ${x===n?'aca':''}" data-ir="${esc(x)}"><span><b class="num">${k+1}</b>${esc(x)}</span><small>${x===aca?'estás acá':x===n?'viendo':''}</small></button>`).join('')}</div></div>`:''}
+   ${ficha?tecHTML({...c,n,notas:'',por:c.por||''}):'<p class="nota-chica">Todavía no tiene ficha de técnica: se completa en la hoja Ejercicios.</p>'}
+   ${c.video||!REAL?`<div class="ej-acciones"><button class="video" id="mv-video">${ico('play')}Video</button></div>`:''}
+   ${puedeArmar()?`<div class="foot-row"><button class="btn sec chico" id="mv-sel">${sel?'Quitar de la selección':'Agregar a la selección'}</button><button class="btn chico" id="mv-armar">Armar sesión con este</button></div>`:''}</div>`,()=>{
+    $$('#sheet-c [data-ir]').forEach(b=>b.onclick=()=>{if(b.dataset.ir!==n)verMapeo(b.dataset.ir)});
+    if($('#mv-video'))$('#mv-video').onclick=()=>verVideo({...c,n});
+    if($('#mv-sel'))$('#mv-sel').onclick=()=>{selMapeo(n);cerrar();renderMapeo()};
+    if($('#mv-armar'))$('#mv-armar').onclick=()=>{cerrar();armarCon([n],null)};
+  });
+}
+
 /* Lo que se manda al proxy: números limpios y circuitos de un solo ejercicio sin bloque */
 function sesionArmada(){
   const ej=AR.ej.map(e=>{const rmin=Math.max(1,Math.round(numIn(e.rmin)||numIn(e.rmax)||10)), rmax=Math.max(1,Math.round(numIn(e.rmax)||rmin));
