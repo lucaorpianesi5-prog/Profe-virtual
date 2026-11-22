@@ -134,7 +134,7 @@ En **Programas → Tus sesiones** aparecen **Armar sesión** y un botón por cad
 - Si la sesión ya existía, la versión anterior se copia a la hoja **Planes_archivo**, con la fecha. La app crea esa hoja la primera vez.
 - El historial no se toca: la "última vez" y la carga sugerida siguen el **nombre** del ejercicio. Para no cortar la progresión, usá el mismo nombre.
 
-Por ahora solo puede hacerlo **el dueño de la planilla**. Para habilitar a otra cuenta, agregá su email en `PUEDEN_ARMAR`, al principio de `proxy.gs`. Los alumnos no ven estos botones.
+Puede hacerlo **el dueño de la planilla**. Para que un alumno arme **su propio** plan, agregá su email en `PUEDEN_ARMAR`, al principio de `proxy.gs`, y publicá una nueva versión. Ese alumno puede usar los ejercicios de la Biblioteca y escribir nombres libres para su sesión, pero **no puede modificar la Biblioteca**: agregar ejercicios, editar fichas y mover niveles queda solo para vos y para los emails de `EDITAN_BIBLIOTECA`.
 
 **Ejercicios nuevos a la Biblioteca:** en el buscador de "Armar sesión", si escribís un ejercicio que no está y tocás **«Usar …»**, se abre **Ejercicio nuevo**:
 - Elegís patrón y enfoque, y **dónde va en la progresión**: aparecen las cadenas con ese patrón y enfoque, para ponerlo antes, entre o después de otro ejercicio. También podés dejarlo como cadena nueva.

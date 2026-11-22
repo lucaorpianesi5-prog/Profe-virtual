@@ -932,7 +932,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.16 · 22/11/2026';
+const VERSION_APP='1.17 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1520,6 +1520,9 @@ function abrirDias(){
 /* ───────── Armar sesión: el plan propio se arma desde la app y queda en la hoja Planes ─────────
    Por ahora solo el dueño de la planilla (y los emails de PUEDEN_ARMAR en el proxy). En la demo se guarda solo en memoria. */
 const puedeArmar=()=>REAL?!!(S.alumno&&S.alumno.armar):true;
+/* Modificar la Biblioteca compartida (ejercicio nuevo, ficha, niveles): solo el dueño y EDITAN_BIBLIOTECA.
+   Con un proxy anterior a 1.17 (sin este dato) vale lo mismo que armar. */
+const editaBib=()=>REAL?!!(S.alumno&&(S.alumno.biblioteca!=null?S.alumno.biblioteca:S.alumno.armar)):true;
 const esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const numIn=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?null:n};
 const sinTilde=t=>String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -1644,7 +1647,7 @@ function elegirEjercicio(i,patIni){
       const q=$('#pk-q').value.trim(), k=sinTilde(q);
       let l=items.filter(x=>(!enf||x.enf===enf)&&(!pat||k||x.pat===pat)&&sirveEn(x.n,lug)&&(!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)));
       const exacto=items.some(x=>sinTilde(x.n)===k);
-      let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}" data-nuevo="1"><span>${ico('plus')}Usar «${esc(q)}»</span><small>${puedeArmar()?'Nuevo: sumalo a la Biblioteca':'No está en la Biblioteca'}</small></button>`:'';
+      let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}" data-nuevo="1"><span>${ico('plus')}Usar «${esc(q)}»</span><small>${editaBib()?'Nuevo: sumalo a la Biblioteca':'No está en la Biblioteca: solo para esta sesión'}</small></button>`:'';
       if(pat&&!k)html+=`<button class="sust-op" data-todos="1"><span>${ico('list')}Ver todos los patrones</span><small></small></button>`;
       let grupo=null;
       l.slice(0,120).forEach(x=>{ if(!k&&x.pat!==grupo){grupo=x.pat;html+=`<div class="pk-pat">${esc(grupo)}</div>`} html+=`<button class="sust-op" data-n="${esc(x.n)}"><span>${esc(x.n)}</span>${info(x)}</button>` });
@@ -1658,7 +1661,7 @@ function elegirEjercicio(i,patIni){
     $('#pk-l').addEventListener('click',e=>{
       if(e.target.closest('[data-todos]')){pat='';pinta();return}
       const b=e.target.closest('[data-n]'); if(!b)return; const n=b.dataset.n.slice(0,80);
-      if(b.dataset.nuevo&&puedeArmar()){altaBiblioteca(n,i,pat);return}
+      if(b.dataset.nuevo&&editaBib()){altaBiblioteca(n,i,pat);return}
       ponerEnArmado(n,i);
     });
     pinta();
@@ -1788,7 +1791,7 @@ function renderMapeo(){
    <div><div class="card-label" style="margin-bottom:.4rem">Lugar</div>${chipsLugar('map-lug',M.lug)}</div>
    ${REAL?`<button class="ar-lado ${M.hechos?'on':''}" id="map-hechos" aria-pressed="${M.hechos}"><i>${ico('check')}</i>Solo los que ya hice</button>`:''}
    <div class="lista-mas" id="map-l"></div>
-   ${armar?`<button class="btn sec chico" id="map-nuevo">${ico('plus')}Ejercicio nuevo en la Biblioteca</button>`:''}`;
+   ${editaBib()?`<button class="btn sec chico" id="map-nuevo">${ico('plus')}Ejercicio nuevo en la Biblioteca</button>`:''}`;
   const pinta=()=>{
     const k=sinTilde(M.q.trim()), aca=REAL?nivelesActuales():{}; let grupo=null, h='';
     its.filter(x=>(!M.pat||x.pat===M.pat)&&(!M.enf||x.enf===M.enf)&&sirveEn(x.n,M.lug)&&(!k||sinTilde(x.n).includes(k))&&(!M.hechos||hiceEj(x.n))).forEach(x=>{
@@ -1838,9 +1841,9 @@ function verMapeo(n){
    ${ls_.length?`<div><div class="card-label">Tu última vez · ${lastFecha(e)}</div><div class="pe-series">${ls_.map((s,j)=>`<div><span>Serie ${j+1}</span><b>${kgr(s.kg,s.reps)}${s.pausas>0?` · ${s.pausas} pausa${s.pausas>1?'s':''}`:''}</b></div>`).join('')}</div></div>`
      :p&&p.uf?`<div><div class="card-label">Tu última vez · ${ddmm(p.uf)}</div><div class="pe-series"><div><span>Mejor serie</span><b>${kgr(p.uk,p.ur)}</b></div></div></div>`:REAL?'<p class="nota-chica">Todavía no lo hiciste.</p>':''}
    ${cad?`<div><div class="card-label" style="margin-bottom:.45rem">Cadena · de lo más simple a lo más exigente</div><div class="lista-mas">${cad.ej.map((x,k)=>`<button class="sust-op cad-op ${x===n?'aca':''}" data-ir="${esc(x)}"><span><b class="num">${k+1}</b>${esc(x)}</span><small>${x===aca?'estás acá':x===n?'viendo':''}</small></button>`).join('')}</div>
-     ${puedeArmar()&&cad.ej.length>1?`<div class="ej-acciones" style="margin-top:.5rem"><button id="mv-up" ${cad.ej[0]===n?'disabled':''}>${ico('up')}Hacerlo más simple</button><button id="mv-down" ${cad.ej[cad.ej.length-1]===n?'disabled':''}>${ico('down')}Hacerlo más exigente</button></div>`:''}</div>`:''}
+     ${editaBib()&&cad.ej.length>1?`<div class="ej-acciones" style="margin-top:.5rem"><button id="mv-up" ${cad.ej[0]===n?'disabled':''}>${ico('up')}Hacerlo más simple</button><button id="mv-down" ${cad.ej[cad.ej.length-1]===n?'disabled':''}>${ico('down')}Hacerlo más exigente</button></div>`:''}</div>`:''}
    ${ficha?tecHTML({...c,n,notas:'',por:c.por||''}):'<p class="nota-chica">Todavía no tiene ficha de técnica: se completa en la hoja Ejercicios.</p>'}
-   ${c.video||!REAL||puedeArmar()?`<div class="ej-acciones">${c.video||!REAL?`<button class="video" id="mv-video">${ico('play')}Video</button>`:''}${puedeArmar()?`<button id="mv-ficha">${ico('edit')}${ficha&&c.como&&c.como.length?'Editar ficha':'Completar ficha'}</button>`:''}</div>`:''}
+   ${c.video||!REAL||editaBib()?`<div class="ej-acciones">${c.video||!REAL?`<button class="video" id="mv-video">${ico('play')}Video</button>`:''}${editaBib()?`<button id="mv-ficha">${ico('edit')}${ficha&&c.como&&c.como.length?'Editar ficha':'Completar ficha'}</button>`:''}</div>`:''}
    ${puedeArmar()?`<div class="foot-row"><button class="btn sec chico" id="mv-sel">${sel?'Quitar de la selección':'Agregar a la selección'}</button><button class="btn chico" id="mv-armar">Armar sesión con este</button></div>`:''}</div>`,()=>{
     $$('#sheet-c [data-ir]').forEach(b=>b.onclick=()=>{if(b.dataset.ir!==n)verMapeo(b.dataset.ir)});
     if($('#mv-video'))$('#mv-video').onclick=()=>verVideo({...c,n});

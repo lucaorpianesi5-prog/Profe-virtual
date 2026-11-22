@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **22/11/2026**, versión **1.16** (PR #16).
+Última actualización: **22/11/2026**, versión **1.17** (PR #17).
 
 ---
 
@@ -64,8 +64,9 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - `preferencias`: esfuerzo y días.
   - `guardarSesionPlan` / `borrarSesionPlan`: archiva la versión anterior en Planes_archivo.
   - `agregarABiblioteca`.
-  - Las tres últimas son solo para el dueño de la planilla o los emails de `PUEDEN_ARMAR`.
-- **Constantes al principio de `proxy.gs`:** `PUEDEN_ARMAR`, `PATRONES`, `ENFOQUES`, `NIVELES` (8) y `SEMANAS_HISTORIAL` (16).
+  - `guardarSesionPlan` y `borrarSesionPlan`: solo para el dueño de la planilla o los emails de `PUEDEN_ARMAR` (un alumno puede armar **su propio** plan).
+  - `agregarABiblioteca`, `editarFicha` y `moverEnCadena` modifican la Biblioteca compartida: solo para el dueño o los emails de `EDITAN_BIBLIOTECA`. Armar el propio plan **no** da este permiso.
+- **Constantes al principio de `proxy.gs`:** `PUEDEN_ARMAR`, `EDITAN_BIBLIOTECA`, `PATRONES`, `ENFOQUES`, `NIVELES` (8) y `SEMANAS_HISTORIAL` (16).
 - **Disparadores simples de la planilla:**
   - `onOpen`: menú Profe Virtual y actualización del Panel.
   - `onEdit` en la Biblioteca: rehace la hoja Listas.
@@ -220,6 +221,25 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 - Avisarles que sus datos (incluido el check-in) quedan en la planilla de Luca.
 
 ### Ideas anotadas
+- **Programas por objetivo y adaptación al usuario** (propuesta del 22/11, pendiente).
+  - **Idea de fondo:** Luca escribe los programas por **espacios a completar** (patrón · enfoque · nivel relativo · series × reps), no con nombres fijos. Al elegir un programa, la app completa cada espacio con el ejercicio de esa cadena que corresponde al **nivel** ("Estás acá") y al **lugar** de la persona.
+  - **Tres puertas en Programas:**
+    1. **"Sé lo que quiero":** catálogo por objetivo (Fuerza, Amplitud de movimiento, Salud y autonomía, Potencia…), con qué es, para quién es y el porqué; "Elegir y empezar" arma las sesiones A, B y C.
+    2. **"Tengo una meta puntual"** (por ejemplo, Julieta y la dominada estricta). La meta es el último nivel de una cadena, con un criterio de logro y una prueba inicial que la ubica en su nivel. La app arma un bloque con el ejercicio de su nivel y los accesorios que define Luca, y muestra una barra de avance a lo largo de la cadena.
+    3. **"No sé por dónde empezar"** (por ejemplo, Rubén, 60 años):
+       - preguntas en términos de vida diaria;
+       - 2 o 3 pruebas simples guiadas, por ejemplo sentarse y pararse 30 s, o equilibrio en una pierna;
+       - una recomendación explicada;
+       - cápsulas cortas de aprendizaje;
+       - una re-evaluación a las 4 semanas;
+       - el chequeo de salud antes de empezar.
+  - **Planilla:** hojas nuevas **Programas** (nombre, objetivo, para quién, por qué y sesiones con sus espacios) y **Metas** (meta, cadena, criterio, prueba y accesorios).
+  - **Orden propuesto:** 1) programas por objetivo; 2) metas puntuales; 3) guía para quien no sabe por dónde empezar.
+  - **Lo que tiene que definir Luca:**
+    1. la lista de objetivos;
+    2. un programa real de ejemplo;
+    3. las preguntas y pruebas para el perfil de Rubén;
+    4. las primeras metas, con su criterio y su prueba.
 - **Semana de adaptación o descarga.** El trabajo óptimo del mes es 3 semanas de progresión de carga y 1 de adaptación o descarga.
   - **Propuesta de diseño:**
     - La app cuenta las semanas del bloque desde una fecha de inicio por alumno (por ejemplo, una columna `inicio_bloque` en Alumnos, o la primera sesión).
