@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **04/11/2026**, después de la segunda sesión de prueba de Luca (PR #10).
+Última actualización: **04/11/2026**, versión **1.11** (PR #11).
 
 ---
 
@@ -41,7 +41,10 @@
    - correr `configurar` si el PR lo indica (crea hojas, columnas o listas nuevas);
    - **Implementar → Gestionar implementaciones → ✏️ → Nueva versión → Implementar**. Solo guardar no alcanza.
    - **Nunca** crear una implementación nueva, porque cambia la URL.
-5. **Commits y PR:** solo cuando Luca lo pide. Los mensajes llevan `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+5. **Número de versión:** en cada PR se sube `VERSION_APP` (en `index.html`) y, si cambió el proxy, `VERSION_PROXY` (en `proxy.gs`). Formato: `1.<n.º de PR> · dd/mm/aaaa`. La app muestra las dos al final de **Inicio** y de **Más**: así Luca ve si ya se cargó la app nueva y si el proxy publicado es el último.
+6. **Commits y PR:** solo cuando Luca lo pide. Los mensajes llevan `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+**¿Ya se cargó lo nuevo?** Mirá el final de Inicio: "App 1.x" tiene que coincidir con el último PR. Si dice "Proxy: versión anterior", falta pegar el proxy y publicar una **Nueva versión** en Apps Script.
 
 **Si la app muestra un error al guardar algo:** el mensaje dice la causa real. "La versión anterior del proxy" quiere decir que falta publicar la versión nueva en Apps Script. "Sin conexión" aparece solo cuando el pedido no llega.
 
@@ -182,6 +185,17 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 - Avisarles que sus datos (incluido el check-in) quedan en la planilla de Luca.
 
 ### Ideas anotadas
+- **Semana de adaptación o descarga.** El trabajo óptimo del mes es 3 semanas de progresión de carga y 1 de adaptación o descarga.
+  - **Propuesta de diseño:**
+    - La app cuenta las semanas del bloque desde una fecha de inicio por alumno (por ejemplo, una columna `inicio_bloque` en Alumnos, o la primera sesión).
+    - En la semana 4 muestra un aviso: "Semana de descarga: …".
+    - Esa semana la sesión arranca con la carga o el volumen reducidos y no sugiere subir.
+    - Al terminar la semana, empieza un bloque nuevo.
+  - **Lo que tiene que definir Luca antes de programarlo:**
+    1. Qué significa "descarga" en su método: menos series, menos carga (¿qué porcentaje?), menos reps, o una combinación.
+    2. Si la semana 4 es fija por calendario o se cuenta por sesiones hechas (por ejemplo, después de 9 sesiones con 3 días por semana).
+    3. Si el alumno puede saltarla o posponerla.
+    4. Si hay diferencia entre "adaptación" (por ejemplo, al empezar o al volver de una pausa) y "descarga" (después de 3 semanas de carga).
 - **Más volumen antes de pasar de nivel** en algunos ejercicios (por ejemplo, de flexiones con rodillas a flexiones completas). Por ahora el rango se ajusta a mano. Falta la solución óptima.
 - **Planes de alumnos desde la app:** el mismo editor, eligiendo el alumno, con opción de duplicar un plan.
 - **Mi suscripción:** vencimiento, aviso antes de vencer y botón de pago (Mercado Pago).
