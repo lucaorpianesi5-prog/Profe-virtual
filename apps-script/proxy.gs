@@ -11,7 +11,7 @@ const CLIENT_ID = '290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleuser
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
 // Versión del proxy: la app la muestra al final de Inicio y de Más, para saber si la última versión está publicada.
-const VERSION_PROXY = '1.11 · 04/11/2026';
+const VERSION_PROXY = '1.13 · 22/11/2026';
 // Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
 // para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
 const PUEDEN_ARMAR = [];
@@ -329,6 +329,11 @@ function atender(q) {
   if (q.accion === 'datos') return Object.assign({ ok: true }, datosDe(alumno));
   if (q.accion === 'guardarSesion') return Object.assign({ ok: true }, guardarSesion(email, q.sesion, q.series));
   if (q.accion === 'preferencias') return Object.assign({ ok: true }, guardarPreferencias(alumno, q));
+  if (q.accion === 'editarFicha' || q.accion === 'moverEnCadena') {
+    if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede editar la Biblioteca');
+    if (q.accion === 'editarFicha') editarFicha(q); else moverEnCadena(q);
+    return Object.assign({ ok: true }, datosDe(alumno));
+  }
   if (q.accion === 'agregarABiblioteca') {
     if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede cargar ejercicios');
     agregarABiblioteca(q);
@@ -592,6 +597,59 @@ function agregarABiblioteca(q) {
       }
     }
     try { actualizarListas(libro()); } catch (e) {}
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Ficha de técnica desde la app (Mapeo): crea o actualiza la fila del ejercicio en Ejercicios.
+function editarFicha(q) {
+  const n = txt(q.n);
+  if (!n) throw falla('datos', 'Falta el nombre del ejercicio');
+  const video = txt(q.video);
+  if (video && !/^https?:\/\//i.test(video)) throw falla('datos', 'El video tiene que ser un link que empiece con http');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const h = hoja('Ejercicios');
+    const v = h.getRange(1, 1, Math.max(1, h.getLastRow()), h.getLastColumn()).getValues();
+    const cab = v[0].map(c => txt(c)), jn = cab.indexOf('ejercicio');
+    let f = -1;
+    for (let i = 1; i < v.length; i++) if (norm(v[i][jn]) === norm(n)) { f = i; break; }
+    const fila = f >= 0 ? v[f].slice() : cab.map(() => '');
+    const poner = (c, val) => { const j = cab.indexOf(c); if (j >= 0) fila[j] = val; };
+    if (f < 0) poner('ejercicio', celda(n));
+    const como = Array.isArray(q.como) ? q.como : [];
+    poner('como_1', celda(como[0])); poner('como_2', celda(como[1])); poner('como_3', celda(como[2]));
+    poner('error_comun', celda(q.err)); poner('musculos', celda(q.mus)); poner('por_que', celda(q.por));
+    poner('video_url', celda(video)); poner('por_lado', !!q.lado);
+    if (f >= 0) h.getRange(f + 1, 1, 1, cab.length).setValues([fila]);
+    else h.getRange(h.getLastRow() + 1, 1, 1, cab.length).setValues([fila]);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Mueve un ejercicio un nivel dentro de su cadena de la Biblioteca (dir -1 = más simple, +1 = más exigente).
+function moverEnCadena(q) {
+  const n = txt(q.n), dir = Number(q.dir) < 0 ? -1 : 1;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const h = hoja('Biblioteca');
+    const v = h.getRange(1, 1, Math.max(1, h.getLastRow()), h.getLastColumn()).getValues();
+    const cab = v[0].map(c => txt(c)), niv = cab.map((c, j) => /^nivel_\d+$/.test(c) ? j : -1).filter(j => j >= 0);
+    for (let i = 1; i < v.length; i++) {
+      const lista = niv.map(j => txt(v[i][j])).filter(Boolean), k = lista.map(norm).indexOf(norm(n));
+      if (k < 0) continue;
+      const otro = k + dir;
+      if (otro < 0 || otro >= lista.length) throw falla('datos', dir < 0 ? 'Ya es el nivel más simple de su cadena' : 'Ya es el nivel más exigente de su cadena');
+      [lista[k], lista[otro]] = [lista[otro], lista[k]];
+      niv.forEach((j, x) => { v[i][j] = lista[x] || ''; });
+      h.getRange(i + 1, 1, 1, cab.length).setValues([v[i]]);
+      return;
+    }
+    throw falla('datos', '"' + n + '" no está en ninguna cadena de la Biblioteca');
   } finally {
     lock.releaseLock();
   }
