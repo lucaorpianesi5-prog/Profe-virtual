@@ -930,7 +930,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.13 · 22/11/2026';
+const VERSION_APP='1.14 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1273,9 +1273,16 @@ function renderApp(){
   const hechos=diasHechos(), entrenoHoy=REAL&&S.sesiones.some(x=>x.fecha===isoHoy());
   const etiqueta=entrenoHoy?'Próxima sesión':'Hoy · '+DIAS_N[HOY].toLowerCase();
   const r=REAL?racha():4;
+  /* Día sin sesión en tu semana: se sugiere descansar (con la opción de entrenar igual) */
+  const descansa=REAL&&pl&&!S.days.includes(HOY);
+  let prox='';
+  if(descansa)for(let k=1;k<=7;k++){const d=(HOY+k)%7;if(S.days.includes(d)){prox=k===1?'mañana':'el '+DIAS_N[d].toLowerCase();break}}
   $('#inicio-c').innerHTML=`
    <div class="app-top"><div><div class="saludo">Hola de nuevo,</div><div class="saludo-nombre">${nombre}</div></div><div class="avatar">${inic}</div></div>
-   ${pl?`<div class="hoy-card"><div class="card-label">${etiqueta}${entrenoHoy?' · hoy ya entrenaste '+ico('check'):''}</div><div class="sesion-tit">Sesión ${l} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${pl.ej.reduce((a,e)=>a+e.s,0)} series</div>
+   ${descansa?`<div class="hoy-card"><div class="card-label">Hoy · ${DIAS_N[HOY].toLowerCase()}${entrenoHoy?' · hoy ya entrenaste '+ico('check'):''}</div><div class="sesion-tit">Hoy descansás ${ico('moon')}</div><div class="sesion-meta">No tenés sesión para hoy. El descanso también es entrenamiento: el músculo se adapta mientras descansás.</div>
+     <div class="sesion-lista"><div class="sesion-item"><span>Próxima: Sesión ${l} · ${esc(pl.meta)}</span><span>${prox}</span></div></div>
+     <button class="btn sec chico" id="btn-ses">Entrenar igual · Sesión ${l}</button></div>`
+   :pl?`<div class="hoy-card"><div class="card-label">${etiqueta}${entrenoHoy?' · hoy ya entrenaste '+ico('check'):''}</div><div class="sesion-tit">Sesión ${l} · ${pl.meta}</div><div class="sesion-meta">${pl.ej.length} ejercicios · ${pl.ej.reduce((a,e)=>a+e.s,0)} series</div>
      <div class="sesion-lista">${pl.ej.slice(0,3).map(e=>`<div class="sesion-item"><span>${e.n}</span><span>${e.s} × ${e.r[0]===e.r[1]?e.r[0]:e.r[0]+'-'+e.r[1]}${e.lado?' c/lado':''}</span></div>`).join('')}${pl.ej.length>3?`<div class="sesion-item mas"><span>+ ${pl.ej.length-3} más</span><span></span></div>`:''}</div>
      <button class="btn" id="btn-ses">Empezar sesión ${REAL?l:''}</button></div>`
    :REAL&&puedeArmar()?`<div class="hoy-card"><div class="card-label">Tu plan</div><div class="sesion-tit">Armá tu primera sesión</div><div class="sesion-meta">Elegí los ejercicios del catálogo, las series y las repeticiones. Queda guardado en tu plan.</div><button class="btn" id="btn-armar1">${ico('plus')}Armar sesión</button></div>`

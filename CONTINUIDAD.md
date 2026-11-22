@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **22/11/2026**, versión **1.13** (PR #13).
+Última actualización: **22/11/2026**, versión **1.14** (PR #14).
 
 ---
 
@@ -118,6 +118,7 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
 
 - **Layouts:** celular, iPad vertical, iPad horizontal (dos paneles) y escritorio. Rotar no pierde estado.
 - **Inicio:**
+  - en un día que no está en tu semana: **"Hoy descansás"**, con la próxima sesión y cuándo toca (mañana, el martes…), y un botón chico **"Entrenar igual"**;
   - próxima sesión, en rotación A → B → C;
   - la semana, con ✓ en los días entrenados;
   - racha.
