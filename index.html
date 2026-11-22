@@ -930,7 +930,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.14 · 22/11/2026';
+const VERSION_APP='1.15 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -968,7 +968,7 @@ const PASOS=[
  {k:'alim',kick:'Tu estilo de vida',t:'¿Cómo describirías tu alimentación?',tipo:'uno',o:[['Bastante desordenada','Como lo que hay, sin horarios fijos'],['Más o menos ordenada','Cuido algunas comidas y otras no'],['Bastante ordenada','Como a horarios y elijo bien casi siempre']]},
  {k:'sust',kick:'Tu estilo de vida',t:'¿Consumís alguna de estas sustancias?',sub:'Es opcional y sin juicio: solo nos sirve para darte consejos de recuperación más útiles.',tipo:'multi',o:['Tabaco','Alcohol','Otras','Ninguna'],excl:'Ninguna',omitible:true},
  {k:'obj',kick:'Objetivos',t:'¿Qué querés lograr?',sub:'Elegí hasta 3 y marcá con la estrella el más importante.',tipo:'obj',o:['Ganar fuerza','Mejorar movilidad','Resistencia / cardio','Composición corporal','Rendimiento en mi deporte','Sentirme mejor en el día a día','Otro']},
- {k:'equip',kick:'Tu equipamiento',t:'¿Dónde entrenás?',tipo:'uno',o:['Gimnasio completo','Gimnasio básico','Casa con elementos','Casa sin elementos']},
+ {k:'lugares',kick:'Dónde entrenás',t:'¿Dónde vas a entrenar?',sub:'Elegí todos los que uses: los ejercicios que te sugerimos se filtran según los elementos de cada lugar.',tipo:'multi',o:['Hogar','Gimnasio','Parque','Vacaciones']},
  {k:'salud',kick:'Salud',t:'Antes de armar tu plan',sub:'Contanos si algo de esto te pasa hoy.',tipo:'salud',o:['Una lesión actual','Dolor al moverme','Una condición médica diagnosticada','Medicación que afecte el ejercicio','Embarazo','Una cirugía reciente']}
 ];
 const pasos=()=>PASOS.filter(p=>!(p.salta&&p.salta(S.ans)));   // 5c se saltea si nunca entrenó con pesas
@@ -1217,7 +1217,7 @@ function planInit(){
   $('#plan-tit').textContent=perfilN+' · '+S.days.length+' días';
   $('#plan-obj').innerHTML=ico('star')+' '+({'Ganar fuerza':'Fuerza','Mejorar movilidad':'Movilidad','Resistencia / cardio':'Resistencia','Composición corporal':'Composición','Rendimiento en mi deporte':'Rendimiento','Sentirme mejor en el día a día':'Bienestar','Otro':'Personal'}[S.princ]||'Fuerza');
   $('#plan-semana').innerHTML=semanaHTML(false);
-  $('#plan-nivel').textContent=nivel(); $('#plan-dur').textContent=S.ans.dur||'60 min'; $('#plan-eq').textContent=S.ans.equip||'Gimnasio completo';
+  $('#plan-nivel').textContent=nivel(); $('#plan-dur').textContent=S.ans.dur||'60 min'; $('#plan-eq').textContent=(S.ans.lugares&&S.ans.lugares.length?S.ans.lugares.join(' · '):'Gimnasio');
   $('#porques').innerHTML=porques().map((p,i)=>`<div class="acordeon ${i===0?'abierto':''}" style="margin-bottom:.55rem"><button class="acordeon-h"><span>${p[0]}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg></button><div class="acordeon-c"><div><p class="ejemplo">${p[1]}</p></div></div></div>`).join('');
 }
 $('#porques').addEventListener('click',e=>{const h=e.target.closest('.acordeon-h');if(h){h.parentNode.classList.toggle('abierto');vibra(6)}});
@@ -1398,15 +1398,22 @@ const repsAlSubir=(e,sets)=>Math.max(1,Math.floor(Math.max(0,...sets.map(s=>s.re
 function sugerencia(e){
   const top=e.r[1];
   if(!REAL)return {kg:e.kg,reps:top,sube:false};
-  /* Caso A: si editaste la sesión después de tu último registro, manda la carga del plan */
-  if(e.act&&e.act>tsUltima(e))return {kg:e.kg||0,reps:top,sube:false};
-  const ls_=lastSets(e);
-  if(!ls_.length){ const p=progDe(e); return {kg:p&&p.uk?p.uk:(e.kg||0),reps:top,sube:false} }
-  const max=Math.max(...ls_.map(s=>s.kg||0)); if(!max)return {kg:e.kg||0,reps:top,sube:false};
+  const ls_=lastSets(e), p=progDe(e);
+  /* Reps: siempre una más que la serie más floja de la última vez, hasta el tope y sin saltos.
+     Sin ningún registro, se arranca en el mínimo del rango (nunca en el tope). */
+  const base=ls_.length?Math.min(...ls_.map(s=>s.reps||0)):(p&&p.ur!=null?p.ur:null);
+  const masUna=base==null?e.r[0]:Math.min(top,Math.max(1,base+1));
+  const max=ls_.length?Math.max(...ls_.map(s=>s.kg||0)):(p&&p.uk||0);
+  /* Caso A: si editaste la sesión después de tu último registro, manda la carga del plan (las reps siguen saliendo del historial) */
+  if(e.act&&e.act>tsUltima(e)){
+    const kg=e.kg||0;
+    return {kg,reps:kg>max&&max&&base!=null?Math.max(1,Math.floor((ls_.length?Math.max(...ls_.map(s=>s.reps||0)):base)/2)):masUna,sube:false};
+  }
+  if(!ls_.length)return {kg:max||e.kg||0,reps:masUna,sube:false};
+  if(!max)return {kg:0,reps:masUna,sube:false};
   const tope=ls_.length>=e.s&&ls_.every(s=>serieTope(e,s));
   if(tope)return {kg:+(max+incremento(max)).toFixed(1),reps:repsAlSubir(e,ls_),sube:true};
-  /* Sin subir la carga, la meta es una repetición más que la serie más floja de la última vez, hasta el tope */
-  return {kg:max,reps:Math.min(top,Math.max(e.r[0],Math.min(...ls_.map(s=>s.reps||0))+1)),sube:false};
+  return {kg:max,reps:masUna,sube:false};
 }
 const sugerida=e=>sugerencia(e).kg;
 const TXT_SUBIR='Subir la carga y bajar las repeticiones a la mitad para volver a construir hasta el tope es la estructura del programa: funciona y previene lesiones. Es una guía, la decisión es tuya.';
@@ -1617,15 +1624,16 @@ function elegirEjercicio(i,patIni){
   const orden=patronesBib(), pos=x=>{const k=orden.indexOf(x.pat);return x.pat==='Otros'?999:k<0?500:k};
   items.sort((a,b)=>pos(a)-pos(b));   // agrupado por patrón, en el orden de la lista (sort estable: respeta el orden de las cadenas)
   const enfs=[...new Set(items.map(x=>x.enf).filter(Boolean))];
-  let enf='', pat=patIni||'';
+  let enf='', pat=patIni||'', lug=(()=>{const m=misLugares();return m.length===1?m[0]:m.length?'mis':''})();
   const info=x=>x.niv?`${x.aca?'<small class="aca">Estás acá · ':'<small>'}Nivel ${x.niv} de ${x.tot}${x.enf&&!enf?' · '+esc(x.enf):''}</small>`:`<small>${esc(x.d||'')}</small>`;
   sheet(`<div class="sheet-col"><div><h3>${i==null?'Agregar ejercicio':'Cambiar '+esc(AR.ej[i].n)}</h3><p class="sub">${patIni?'Ejercicios de <b style="color:var(--texto)">'+esc(patIni)+'</b>. ':''}Buscá en la Biblioteca o escribí uno nuevo.</p></div>
     <input class="cin" id="pk-q" placeholder="Buscar o escribir el nombre" autocomplete="off">
     ${enfs.length?`<div class="pk-enf" id="pk-enf"><button data-e="" class="on">Todos</button>${enfs.map(x=>`<button data-e="${esc(x)}">${esc(x)}</button>`).join('')}</div>`:''}
+    ${chipsLugar('pk-lug',lug)}
     <div class="lista-mas" id="pk-l"></div></div>`,()=>{
     const pinta=()=>{
       const q=$('#pk-q').value.trim(), k=sinTilde(q);
-      let l=items.filter(x=>(!enf||x.enf===enf)&&(!pat||k||x.pat===pat)&&(!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)));
+      let l=items.filter(x=>(!enf||x.enf===enf)&&(!pat||k||x.pat===pat)&&sirveEn(x.n,lug)&&(!k||sinTilde(x.n).includes(k)||sinTilde(x.pat).includes(k)));
       const exacto=items.some(x=>sinTilde(x.n)===k);
       let html=q&&!exacto?`<button class="sust-op" data-n="${esc(q)}" data-nuevo="1"><span>${ico('plus')}Usar «${esc(q)}»</span><small>${puedeArmar()?'Nuevo: sumalo a la Biblioteca':'No está en la Biblioteca'}</small></button>`:'';
       if(pat&&!k)html+=`<button class="sust-op" data-todos="1"><span>${ico('list')}Ver todos los patrones</span><small></small></button>`;
@@ -1636,6 +1644,7 @@ function elegirEjercicio(i,patIni){
     };
     $('#pk-q').addEventListener('input',pinta);
     $('#pk-q').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('#pk-l .sust-op[data-n]');b&&b.click()}});
+    $('#pk-lug').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;lug=b.dataset.v;$$('#pk-lug button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
     if($('#pk-enf'))$('#pk-enf').addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(!b)return;enf=b.dataset.e;$$('#pk-enf button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
     $('#pk-l').addEventListener('click',e=>{
       if(e.target.closest('[data-todos]')){pat='';pinta();return}
@@ -1669,13 +1678,14 @@ const PATRONES_DEF=['Bisagra de Cadera','Bisagra de Rodilla','Core','Tracción',
 const ENFOQUES_DEF=['Fuerza','Amplitud de Movimiento','Activación','Potencia','Equilibrio y Coordinación','Resistencia'];
 function altaBiblioteca(nombre,i,patIni,desdeMapeo){
   const pats=(S.patrones&&S.patrones.length?S.patrones:PATRONES_DEF), enfs=(S.enfoques&&S.enfoques.length?S.enfoques:ENFOQUES_DEF);
-  const st={pat:pats.includes(patIni)?patIni:'',enf:'',pos:'',lado:false};
+  const st={pat:pats.includes(patIni)?patIni:'',enf:'',pos:'',lado:false,lug:[]};
   sheet(`<div class="sheet-col"><div><h3>Ejercicio nuevo</h3><p class="sub">Sumalo a la Biblioteca: queda en el catálogo para otras sesiones, con su lugar en la progresión.</p></div>
     <label class="campo"><span>Nombre</span><input class="cin" id="nb-n" maxlength="80" value="${esc(nombre)}"></label>
     <div><div class="card-label" style="margin-bottom:.45rem">Patrón</div><div class="pk-enf" id="nb-pat">${pats.map(x=>`<button data-v="${esc(x)}" class="${x===st.pat?'on':''}">${esc(x)}</button>`).join('')}</div></div>
     <div><div class="card-label" style="margin-bottom:.45rem">Enfoque</div><div class="pk-enf" id="nb-enf">${enfs.map(x=>`<button data-v="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>
     <div id="nb-pos"></div>
     <button class="ar-lado" id="nb-lado" aria-pressed="false"><i>${ico('check')}</i>Por lado (unilateral)</button>
+    <div><div class="card-label" style="margin-bottom:.45rem">Dónde se puede hacer</div><div class="chips" id="nb-lug">${lugaresLista().map(l=>`<button class="chip" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
     <button class="btn" id="nb-ok" disabled>Agregar a la Biblioteca</button>
     ${desdeMapeo?'':'<button class="btn sec chico" id="nb-solo">Usar solo en esta sesión</button>'}</div>`,()=>{
     const pinta=()=>{
@@ -1698,6 +1708,7 @@ function altaBiblioteca(nombre,i,patIni,desdeMapeo){
     elegir('#nb-pat','pat'); elegir('#nb-enf','enf');
     $('#nb-pos').addEventListener('click',e=>{const b=e.target.closest('[data-pos]');if(!b)return;st.pos=b.dataset.pos;vibra(6);pinta()});
     $('#nb-n').addEventListener('input',pinta);
+    $('#nb-lug').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const v=b.dataset.v;st.lug=st.lug.includes(v)?st.lug.filter(x=>x!==v):[...st.lug,v];b.classList.toggle('sel');vibra(6)};
     $('#nb-lado').onclick=()=>{st.lado=!st.lado;$('#nb-lado').classList.toggle('on',st.lado);$('#nb-lado').setAttribute('aria-pressed',st.lado)};
     if($('#nb-solo'))$('#nb-solo').onclick=()=>ponerEnArmado($('#nb-n').value.trim().slice(0,80)||nombre,i,st.lado);
     $('#nb-ok').onclick=async()=>{
@@ -1705,12 +1716,12 @@ function altaBiblioteca(nombre,i,patIni,desdeMapeo){
       if(enCatalogo(n)&&Object.values(S.cat).some(c=>sinTilde(c.n)===sinTilde(n)&&c.cad!=null)){snack('"'+n+'" ya está en la Biblioteca');return}
       const ok=$('#nb-ok'); ok.disabled=true; ok.textContent='Agregando…';
       if(REAL){
-        try{ aplicarDatos(await api('agregarABiblioteca',{n,pat:st.pat,enf:st.enf,junto,lado,porLado:st.lado})) }
+        try{ aplicarDatos(await api('agregarABiblioteca',{n,pat:st.pat,enf:st.enf,junto,lado,porLado:st.lado,lugares:lugaresLista().filter(l=>st.lug.includes(l))})) }
         catch(e){ ok.disabled=false; ok.textContent='Agregar a la Biblioteca'; return snack(e.code?mensajeError(e):'Sin conexión: no se agregó. Probá de nuevo cuando tengas señal.') }
       } else {
         S.cadenas=S.cadenas||[]; let c=junto&&S.cadenas.find(x=>x.ej.includes(junto));
         if(c){c.ej.splice(lado==='antes'?c.ej.indexOf(junto):c.ej.indexOf(junto)+1,0,n)} else {c={pat:st.pat,enf:st.enf,ej:[n]};S.cadenas.push(c)}
-        const ci=S.cadenas.indexOf(c); c.ej.forEach((x,k)=>{S.cat[x]={...(S.cat[x]||{n:x,video:'',como:[],err:'',mus:[],por:''}),pat:c.pat,enf:c.enf,cad:ci,niv:k+1,reg:c.ej[k-1]||'',prog:c.ej[k+1]||'',...(x===n?{lado:st.lado}:{})}});
+        const ci=S.cadenas.indexOf(c); c.ej.forEach((x,k)=>{S.cat[x]={...(S.cat[x]||{n:x,video:'',como:[],err:'',mus:[],por:''}),pat:c.pat,enf:c.enf,cad:ci,niv:k+1,reg:c.ej[k-1]||'',prog:c.ej[k+1]||'',...(x===n?{lado:st.lado,lug:st.lug}:{})}});
       }
       if(desdeMapeo){cerrar();renderMapeo()} else ponerEnArmado(n,i,st.lado);
       snack(n+' agregado a la Biblioteca');
@@ -1718,8 +1729,34 @@ function altaBiblioteca(nombre,i,patIni,desdeMapeo){
     pinta();
   });
 }
+/* ───────── Lugares de entrenamiento ───────── */
+const LUGARES_DEF=['Hogar','Gimnasio','Parque','Vacaciones'];
+const lugaresLista=()=>S.lugares&&S.lugares.length?S.lugares:LUGARES_DEF;
+const misLugares=()=>REAL?(S.alumno&&S.alumno.lugares)||[]:(S.ans.lugares||[]);
+/* Dónde se puede hacer un ejercicio: los lugares de su ficha. Sin lugares cargados, se muestra en todos los filtros */
+const lugaresEj=n=>{const c=enCatalogo(n)||S.cat[n]||{};return c.lug||[]};
+const sirveEn=(n,lug)=>{if(!lug)return true;const l=lugaresEj(n);if(!l.length)return true;return lug==='mis'?misLugares().some(x=>l.includes(x)):l.includes(lug)};
+function chipsLugar(id,act){
+  const mis=misLugares();
+  return `<div class="pk-enf" id="${id}"><button data-v="" class="${!act?'on':''}">Todos</button>${mis.length>1?`<button data-v="mis" class="${act==='mis'?'on':''}">Mis lugares</button>`:''}${lugaresLista().map(v=>`<button data-v="${esc(v)}" class="${v===act?'on':''}">${esc(v)}</button>`).join('')}</div>`;
+}
+/* Más → Dónde entrenás */
+function abrirLugares(){
+  let sel=[...misLugares()];
+  sheet(`<div class="sheet-col"><div><h3>¿Dónde entrenás?</h3><p class="sub">Elegí todos los que uses. Mapeo y el buscador de ejercicios arrancan filtrados por tus lugares.</p></div>
+    <div class="chips" id="lg-c">${lugaresLista().map(l=>`<button class="chip ${sel.includes(l)?'sel':''}" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div>
+    <button class="btn" id="lg-ok">Guardar</button></div>`,()=>{
+    $('#lg-c').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const v=b.dataset.v;sel=sel.includes(v)?sel.filter(x=>x!==v):[...sel,v];b.classList.toggle('sel');vibra(6)};
+    $('#lg-ok').onclick=()=>{
+      sel=lugaresLista().filter(l=>sel.includes(l));
+      if(REAL){S.alumno.lugares=sel;guardaCache();api('preferencias',{lugares:sel}).catch(()=>snack('Sin conexión: se guarda cuando vuelva la señal'))} else S.ans.lugares=sel;
+      S.map.lug=sel.length===1?sel[0]:sel.length?'mis':''; cerrar(); renderMas(); if(S.tab==='mapeo')renderMapeo(); snack(sel.length?'Entrenás en: '+sel.join(', '):'Sin lugares elegidos');
+    };
+  });
+}
+
 /* ───────── Mapeo: la Biblioteca como base de datos, con filtros, detalle y selección para armar sesiones ───────── */
-S.map={pat:'',enf:'',q:'',hechos:false,sel:[]};
+S.map={pat:'',enf:'',q:'',hechos:false,sel:[],lug:null};
 function itemsMapeo(){
   const items=[], visto=new Set();
   (S.cadenas||[]).forEach((c,ci)=>c.ej.forEach((n,k)=>{visto.add(sinTilde(n));items.push({n,pat:c.pat||'Sin patrón',enf:c.enf||'',niv:k+1,tot:c.ej.length,ci})}));
@@ -1733,23 +1770,26 @@ const hiceEj=n=>REAL&&(S.hist.some(h=>h.ej===n)||!!(S.prog&&S.prog[kEj(n)]));
 function renderMapeo(){
   const M=S.map, its=itemsMapeo(), pats=[...new Set(its.map(x=>x.pat))], enfs=[...new Set(its.map(x=>x.enf).filter(Boolean))], armar=puedeArmar();
   if(M.pat&&!pats.includes(M.pat))M.pat=''; if(M.enf&&!enfs.includes(M.enf))M.enf='';
+  if(M.lug==null){const mis=misLugares();M.lug=mis.length===1?mis[0]:mis.length?'mis':''}   // arranca filtrado por tus lugares
   const chips=(id,vals,act)=>`<div class="pk-enf" id="${id}"><button data-v="" class="${!act?'on':''}">Todos</button>${vals.map(v=>`<button data-v="${esc(v)}" class="${v===act?'on':''}">${esc(v)}</button>`).join('')}</div>`;
   $('#map-c').innerHTML=`<div class="tt">Mapeo</div><p class="sub-t" style="margin:0">${its.length} ejercicios en la Biblioteca${armar?' · tocá + para elegir y armar una sesión':''}</p>
    <input class="cin" id="map-q" placeholder="Buscar ejercicio" autocomplete="off" value="${esc(M.q)}">
    <div><div class="card-label" style="margin-bottom:.4rem">Patrón</div>${chips('map-pat',pats,M.pat)}</div>
    ${enfs.length?`<div><div class="card-label" style="margin-bottom:.4rem">Enfoque</div>${chips('map-enf',enfs,M.enf)}</div>`:''}
+   <div><div class="card-label" style="margin-bottom:.4rem">Lugar</div>${chipsLugar('map-lug',M.lug)}</div>
    ${REAL?`<button class="ar-lado ${M.hechos?'on':''}" id="map-hechos" aria-pressed="${M.hechos}"><i>${ico('check')}</i>Solo los que ya hice</button>`:''}
    <div class="lista-mas" id="map-l"></div>
    ${armar?`<button class="btn sec chico" id="map-nuevo">${ico('plus')}Ejercicio nuevo en la Biblioteca</button>`:''}`;
   const pinta=()=>{
     const k=sinTilde(M.q.trim()), aca=REAL?nivelesActuales():{}; let grupo=null, h='';
-    its.filter(x=>(!M.pat||x.pat===M.pat)&&(!M.enf||x.enf===M.enf)&&(!k||sinTilde(x.n).includes(k))&&(!M.hechos||hiceEj(x.n))).forEach(x=>{
+    its.filter(x=>(!M.pat||x.pat===M.pat)&&(!M.enf||x.enf===M.enf)&&sirveEn(x.n,M.lug)&&(!k||sinTilde(x.n).includes(k))&&(!M.hechos||hiceEj(x.n))).forEach(x=>{
       if(x.pat!==grupo){grupo=x.pat;h+=`<div class="pk-pat">${esc(grupo)}</div>`}
       const e=ejPlan(x.n), m=REAL?metaProxima(e):null, p=REAL?progDe(e):null, ls_=REAL?lastSets(e):[];
       const ult=ls_.length?lastFecha(e)+': '+resumenSeries(ls_):p&&p.uf?ddmm(p.uf)+': '+(p.uk?fmt(p.uk)+' kg × ':'')+(p.ur||0):'';
       const esAca=x.ci!=null&&aca[x.ci]===x.n, sel=M.sel.includes(x.n);
       h+=`<div class="map-fila"><button class="map-info" data-ver="${esc(x.n)}"><b>${esc(x.n)}</b>
         <small class="${esAca?'aca':''}">${[x.niv?'Nivel '+x.niv+' de '+x.tot:'',x.enf,esAca?'Estás acá':''].filter(Boolean).map(esc).join(' · ')||'Sin cadena'}</small>
+        <small>${lugaresEj(x.n).length?esc(lugaresEj(x.n).join(' · ')):M.lug?'Sin lugar cargado':''}</small>
         ${ult?`<small>Última ${ult}${m?' → Próxima '+m.corto:''}</small>`:''}</button>
         ${armar?`<button class="map-add ${sel?'on':''}" data-add="${esc(x.n)}" aria-label="${sel?'Quitar de':'Agregar a'} la selección" aria-pressed="${sel}">${ico(sel?'check':'plus')}</button>`:''}</div>`;
     });
@@ -1758,7 +1798,7 @@ function renderMapeo(){
   pinta(); pintaFootMapeo();
   $('#map-q').addEventListener('input',e=>{M.q=e.target.value;pinta()});
   const filtro=(id,k)=>$(id)&&$(id).addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;M[k]=b.dataset.v;$$(id+' button').forEach(x=>x.classList.toggle('on',x===b));vibra(6);pinta()});
-  filtro('#map-pat','pat'); filtro('#map-enf','enf');
+  filtro('#map-pat','pat'); filtro('#map-enf','enf'); filtro('#map-lug','lug');
   if($('#map-hechos'))$('#map-hechos').onclick=e=>{M.hechos=!M.hechos;e.currentTarget.classList.toggle('on',M.hechos);vibra(6);pinta()};
   if($('#map-nuevo'))$('#map-nuevo').onclick=()=>altaBiblioteca(M.q.trim(),null,M.pat,true);
   $('#map-l').addEventListener('click',e=>{
@@ -1784,7 +1824,7 @@ function verMapeo(n){
   const e=ejPlan(n), m=REAL?metaProxima(e):null, p=REAL?progDe(e):null, ls_=REAL?lastSets(e):[], sel=S.map.sel.includes(n);
   const ficha=(c.como&&c.como.length)||!REAL;
   const kgr=(k,r)=>(k?fmt(k)+' kg × ':'')+(r||0);
-  sheet(`<div class="sheet-col pe-detalle"><div><h3 style="font-size:1.15rem">${esc(n)}</h3><p class="sub" style="margin-top:.2rem">${[c.pat,c.enf,c.niv&&cad?'nivel '+c.niv+' de '+cad.ej.length:'',c.lado?'por lado':''].filter(Boolean).map(esc).join(' · ')||'Fuera de la Biblioteca'}</p></div>
+  sheet(`<div class="sheet-col pe-detalle"><div><h3 style="font-size:1.15rem">${esc(n)}</h3><p class="sub" style="margin-top:.2rem">${[c.pat,c.enf,c.niv&&cad?'nivel '+c.niv+' de '+cad.ej.length:'',c.lado?'por lado':''].filter(Boolean).map(esc).join(' · ')||'Fuera de la Biblioteca'}</p>${(c.lug||[]).length?`<div class="fila" style="margin:.45rem 0 0">${c.lug.map(l=>`<span class="pill">${esc(l)}</span>`).join('')}</div>`:''}</div>
    ${m?`<div class="pe-meta"><div class="card-label">Tu próxima sesión</div><div class="pe-big">${m.largo}</div><p>${m.txt}</p></div>`:''}
    ${ls_.length?`<div><div class="card-label">Tu última vez · ${lastFecha(e)}</div><div class="pe-series">${ls_.map((s,j)=>`<div><span>Serie ${j+1}</span><b>${kgr(s.kg,s.reps)}${s.pausas>0?` · ${s.pausas} pausa${s.pausas>1?'s':''}`:''}</b></div>`).join('')}</div></div>`
      :p&&p.uf?`<div><div class="card-label">Tu última vez · ${ddmm(p.uf)}</div><div class="pe-series"><div><span>Mejor serie</span><b>${kgr(p.uk,p.ur)}</b></div></div></div>`:REAL?'<p class="nota-chica">Todavía no lo hiciste.</p>':''}
@@ -1823,17 +1863,19 @@ function editarFicha(n){
     <label class="campo"><span>Por qué (para qué sirve)</span><input class="cin" id="fi-por" maxlength="200" value="${esc(c.por||'')}"></label>
     <label class="campo"><span>Video (link de YouTube no listado)</span><input class="cin" id="fi-vid" inputmode="url" maxlength="200" placeholder="https://…" value="${esc(c.video||'')}"></label>
     <button class="ar-lado ${c.lado?'on':''}" id="fi-lado" aria-pressed="${!!c.lado}"><i>${ico('check')}</i>Por lado (unilateral)</button>
+    <div><div class="card-label" style="margin-bottom:.45rem">Dónde se puede hacer</div><div class="chips" id="fi-lug">${lugaresLista().map(l=>`<button class="chip ${(c.lug||[]).includes(l)?'sel':''}" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div></div>
     <button class="btn" id="fi-ok">Guardar ficha</button><button class="btn sec chico" id="fi-no">Cancelar</button></div>`,()=>{
-    let lado=!!c.lado;
+    let lado=!!c.lado, lugs=[...(c.lug||[])];
+    $('#fi-lug').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;const v=b.dataset.v;lugs=lugs.includes(v)?lugs.filter(x=>x!==v):[...lugs,v];b.classList.toggle('sel');vibra(6)};
     $('#fi-lado').onclick=()=>{lado=!lado;$('#fi-lado').classList.toggle('on',lado);$('#fi-lado').setAttribute('aria-pressed',lado)};
     $('#fi-no').onclick=()=>verMapeo(n);
     $('#fi-ok').onclick=async()=>{
-      const q={n,como:[0,1,2].map(k=>$('#fi-c'+k).value.trim()).filter(Boolean),err:$('#fi-err').value.trim(),mus:$('#fi-mus').value.split(',').map(x=>x.trim()).filter(Boolean).join(', '),por:$('#fi-por').value.trim(),video:$('#fi-vid').value.trim(),lado};
+      const q={n,como:[0,1,2].map(k=>$('#fi-c'+k).value.trim()).filter(Boolean),err:$('#fi-err').value.trim(),mus:$('#fi-mus').value.split(',').map(x=>x.trim()).filter(Boolean).join(', '),por:$('#fi-por').value.trim(),video:$('#fi-vid').value.trim(),lado,lugares:lugaresLista().filter(l=>lugs.includes(l))};
       if(q.video&&!/^https?:\/\//i.test(q.video)){snack('El video tiene que ser un link que empiece con http');return}
       const ok=$('#fi-ok'); ok.disabled=true; ok.textContent='Guardando…';
       if(REAL){
         try{ aplicarDatos(await api('editarFicha',q)) }catch(e){ ok.disabled=false; ok.textContent='Guardar ficha'; return snack(e.code?mensajeError(e):'Sin conexión: no se guardó. Probá de nuevo cuando tengas señal.') }
-      } else S.cat[n]={...(S.cat[n]||{n}),como:q.como,err:q.err,mus:q.mus?q.mus.split(', '):[],por:q.por,video:q.video,lado};
+      } else S.cat[n]={...(S.cat[n]||{n}),como:q.como,err:q.err,mus:q.mus?q.mus.split(', '):[],por:q.por,video:q.video,lado,lug:q.lugares};
       vibra(10); snack('Ficha guardada'); verMapeo(n);
     };
   });
@@ -1907,6 +1949,7 @@ function renderMas(){
    ${REAL&&al.email?`<p class="sub-t" style="margin:0">${al.email}</p>`:''}
    <div class="lista-mas">
     <button class="sust-op" id="m-inst"><span>${ico('download')}Instalar en este dispositivo</span><small>${esStandalone()?'Instalada':''}</small></button>
+    <button class="sust-op" id="m-lug"><span>${ico('compass')}Dónde entrenás</span><small>${misLugares().length?esc(misLugares().join(', ')):'Elegir'}</small></button>
     <button class="sust-op" id="m-esf"><span>${ico('pulse')}Registro de esfuerzo</span><small>${ESF_NOM[S.pref.esfuerzo]}</small></button>
     <button class="sust-op" id="m-est"><span>${ico('palette')}Estética</span><small>${est}</small></button>
     ${REAL?`<button class="sust-op" id="m-sync"><span>${ico('refresh')}Sincronizar</span><small>${pend?pend+' sin guardar':'Al día'}</small></button>`
@@ -1916,6 +1959,7 @@ function renderMas(){
           :`<button class="sust-op" id="m-reset"><span>${ico('refresh')}Reiniciar demo</span><small></small></button>`}
    </div><p class="nota-chica">${REAL?'Tus sesiones se guardan primero en este dispositivo y después en el registro de Luca: si entrenás sin señal, se suben solas cuando vuelve la conexión.':'Más reúne lo que no se usa a diario: suscripción, ajustes y la re-entrevista de cada mesociclo.'}</p>${versionHTML()}`;
   $('#m-inst').onclick=abrirInstalar;
+  $('#m-lug').onclick=abrirLugares;
   $('#m-esf').onclick=()=>sheetEsfuerzo('mas');
   $('#m-est').onclick=()=>abrirDemo('est');
   if(REAL){
@@ -2425,11 +2469,12 @@ const MSJ={
 /* Sin código = no llegó a la planilla (sin conexión). Con un código que no conocemos, se muestra el error real: nunca se disfraza de "sin conexión". */
 const mensajeError=e=>MSJ[e.code]?MSJ[e.code](e):e.code?'La planilla respondió con un error: '+(e.message||e.code):'No hay conexión con el registro de Luca. Probá de nuevo en un rato.';
 
-function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,version:S.verProxy,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
+function guardaCache(){ if(S.alumno)ls.set('pv-cache',{alumno:S.alumno,plan:S.planCrudo,catalogo:Object.values(S.cat),cadenas:S.cadenas,lugares:S.lugares,version:S.verProxy,patrones:S.patrones,enfoques:S.enfoques,sesiones:S.sesiones,historial:S.hist,progresiones:Object.values(S.prog)}) }
 function aplicarDatos(d){
   S.alumno=d.alumno; S.planCrudo=d.plan||[];
   S.cat={}; (d.catalogo||[]).forEach(c=>S.cat[c.n]=c);
   S.verProxy=d.version||'';
+  S.lugares=d.lugares||[];
   S.cadenas=d.cadenas||[]; S.patrones=d.patrones||[]; S.enfoques=d.enfoques||[]; S.prog={}; (d.progresiones||[]).forEach(p=>S.prog[kEj(p.ej)]=p);
   S.plan={}; S.letras=[];
   S.planCrudo.forEach(p=>{S.plan[p.sesion]={meta:p.nombre||'Sesión '+p.sesion,ej:p.ejercicios};S.letras.push(p.sesion)});

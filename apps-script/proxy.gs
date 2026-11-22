@@ -11,12 +11,14 @@ const CLIENT_ID = '290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleuser
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
 // Versión del proxy: la app la muestra al final de Inicio y de Más, para saber si la última versión está publicada.
-const VERSION_PROXY = '1.13 · 22/11/2026';
+const VERSION_PROXY = '1.15 · 22/11/2026';
 // Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
 // para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
 const PUEDEN_ARMAR = [];
 // Patrones de movimiento de la Biblioteca (lista desplegable en la columna "patron"; la app los muestra en este orden).
 const PATRONES = ['Bisagra de Cadera', 'Bisagra de Rodilla', 'Core', 'Tracción', 'Empuje', 'Tren superior', 'Tren inferior', 'Full body'];
+// Lugares de entrenamiento: el alumno elige los suyos y cada ejercicio indica dónde se puede hacer (columna "lugares").
+const LUGARES = ['Hogar', 'Gimnasio', 'Parque', 'Vacaciones'];
 // Enfoques de la Biblioteca (lista desplegable en la columna "enfoque").
 const ENFOQUES = ['Fuerza', 'Amplitud de Movimiento', 'Activación', 'Potencia', 'Equilibrio y Coordinación', 'Resistencia'];
 // Cuántos niveles puede tener una cadena de la Biblioteca (de la regresión a la progresión).
@@ -26,10 +28,10 @@ const NIVELES = 8;
 const SEMANAS_HISTORIAL = 16;
 
 const HOJAS = {
-  Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas'],
+  Alumnos:    ['email', 'nombre', 'estado', 'dias', 'registro_esfuerzo', 'fecha_alta', 'fecha_pago', 'fecha_vencimiento', 'monto', 'notas', 'lugares'],
   Planes:     ['email', 'sesion', 'sesion_nombre', 'orden', 'ejercicio', 'series', 'reps_min', 'reps_max', 'unidad', 'descanso_seg', 'carga_kg', 'por_que', 'notas', 'bloque', 'actualizado'],
   Biblioteca: ['patron', 'enfoque'].concat(Array.from({ length: NIVELES }, (_, i) => 'nivel_' + (i + 1))),
-  Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion', 'por_lado'],
+  Ejercicios: ['ejercicio', 'patron', 'video_url', 'como_1', 'como_2', 'como_3', 'error_comun', 'musculos', 'por_que', 'regresion', 'progresion', 'por_lado', 'lugares'],
   Sesiones:   ['id_sesion', 'fecha', 'email', 'sesion', 'duracion_min', 'series', 'reducida', 'rpe_sesion', 'sueno', 'estres', 'energia', 'guardada'],
   Registro:   ['id_sesion', 'fecha', 'email', 'sesion', 'ejercicio', 'serie', 'carga_kg', 'reps', 'rir', 'rpe', 'pausas'],
   Progresiones: ['email', 'ejercicio', 'patron', 'enfoque', 'nivel', 'primera_fecha', 'primera_carga', 'primeras_reps',
@@ -412,7 +414,7 @@ function catalogo() {
       n: txt(r.ejercicio), pat: txt(r.patron), video: txt(r.video_url),
       como: [r.como_1, r.como_2, r.como_3].map(txt).filter(Boolean),
       err: txt(r.error_comun), mus: txt(r.musculos).split(',').map(x => x.trim()).filter(Boolean),
-      por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion), lado: siNo(r.por_lado)
+      por: txt(r.por_que), reg: txt(r.regresion), prog: txt(r.progresion), lado: siNo(r.por_lado), lug: lugaresDe(r.lugares)
     };
   });
   const cat = {}, cadenas = [];
@@ -474,10 +476,10 @@ function datosDe(a) {
 
   return {
     alumno: {
-      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email),
+      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email), lugares: lugaresDe(a.lugares),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
-    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, enfoques: ENFOQUES, version: VERSION_PROXY, sesiones: ses, historial: historial,
+    plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, enfoques: ENFOQUES, lugares: LUGARES, version: VERSION_PROXY, sesiones: ses, historial: historial,
     progresiones: (libro().getSheetByName('Progresiones') ? filas('Progresiones') : []).filter(r => norm(r.email) === email).map(r => ({
       ej: txt(r.ejercicio), pf: fecha(r.primera_fecha), pk: num(r.primera_carga), pr: num(r.primeras_reps),
       uf: fecha(r.ultima_fecha), uk: num(r.ultima_carga), ur: num(r.ultimas_reps), mk: num(r.mejor_carga), n: num(r.sesiones)
@@ -586,15 +588,18 @@ function agregarABiblioteca(q) {
       nueva[cp] = pat; nueva[ce] = enf; nueva[niv[0]] = n;
       h.getRange(h.getLastRow() + 1, 1, 1, cab.length).setValues([nueva]);
     }
-    if (q.porLado) {
+    const lugs = Array.isArray(q.lugares) ? lugaresDe(q.lugares.join(',')).join(', ') : '';
+    if (q.porLado || lugs) {
       const he = hoja('Ejercicios'), ve = he.getRange(1, 1, Math.max(1, he.getLastRow()), he.getLastColumn()).getValues();
-      const cabE = ve[0].map(c => txt(c)), jn = cabE.indexOf('ejercicio'), jl = cabE.indexOf('por_lado');
+      const cabE = ve[0].map(c => txt(c)), jn = cabE.indexOf('ejercicio'), jl = cabE.indexOf('por_lado'), jg = cabE.indexOf('lugares');
       let fe = -1;
       for (let i = 1; i < ve.length; i++) if (norm(ve[i][jn]) === norm(n)) fe = i;
-      if (jl >= 0) {
-        if (fe < 0) { const r = cabE.map(() => ''); r[jn] = n; r[jl] = true; he.getRange(he.getLastRow() + 1, 1, 1, cabE.length).setValues([r]); }
-        else he.getRange(fe + 1, jl + 1).setValue(true);
-      }
+      const r = fe < 0 ? cabE.map(() => '') : ve[fe].slice();
+      r[jn] = fe < 0 ? n : r[jn];
+      if (jl >= 0 && q.porLado) r[jl] = true;
+      if (jg >= 0 && lugs) r[jg] = lugs;
+      if (fe < 0) he.getRange(he.getLastRow() + 1, 1, 1, cabE.length).setValues([r]);
+      else he.getRange(fe + 1, 1, 1, cabE.length).setValues([r]);
     }
     try { actualizarListas(libro()); } catch (e) {}
   } finally {
@@ -623,6 +628,7 @@ function editarFicha(q) {
     poner('como_1', celda(como[0])); poner('como_2', celda(como[1])); poner('como_3', celda(como[2]));
     poner('error_comun', celda(q.err)); poner('musculos', celda(q.mus)); poner('por_que', celda(q.por));
     poner('video_url', celda(video)); poner('por_lado', !!q.lado);
+    if (Array.isArray(q.lugares)) poner('lugares', lugaresDe(q.lugares.join(',')).join(', '));
     if (f >= 0) h.getRange(f + 1, 1, 1, cab.length).setValues([fila]);
     else h.getRange(h.getLastRow() + 1, 1, 1, cab.length).setValues([fila]);
   } finally {
@@ -720,6 +726,7 @@ function guardarPreferencias(a, q) {
   const poner = (col, valor) => { const j = cab.indexOf(col); if (j >= 0) h.getRange(a._fila, j + 1).setValue(valor); };
   if (['nada', 'rir', 'rpe', 'ambos'].indexOf(q.esfuerzo) >= 0) poner('registro_esfuerzo', q.esfuerzo);
   if (typeof q.dias === 'string' && /^[LMXJVSD](,[LMXJVSD]){0,6}$/.test(q.dias)) poner('dias', q.dias);
+  if (Array.isArray(q.lugares)) poner('lugares', lugaresDe(q.lugares.join(',')).join(', '));
   return {};
 }
 
@@ -763,6 +770,8 @@ function num(v) {
   const n = Number(String(v).replace(',', '.'));
   return isNaN(n) ? null : n;
 }
+// "Hogar, Parque" → ['Hogar', 'Parque'] (solo los de la lista LUGARES, en ese orden)
+function lugaresDe(v) { const t = norm(v); return LUGARES.filter(l => t.indexOf(norm(l)) >= 0); }
 function siNo(v) { return v === true || /^(s[ií]|x|true|verdadero|1)$/i.test(txt(v)); }
 function vacio(v) { return v == null ? '' : v; }
 // Texto que viene de la app: que nunca se interprete como fórmula en la planilla.

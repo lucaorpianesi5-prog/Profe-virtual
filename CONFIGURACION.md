@@ -96,6 +96,7 @@ Subí el cambio (commit y push). En un par de minutos la app publicada ya usa da
 | `registro_esfuerzo` | lo completa la app cuando el alumno elige RIR/RPE |
 | `fecha_alta`, `fecha_pago`, `fecha_vencimiento`, `monto` | para la suscripción. Hoy la app muestra el vencimiento y el monto en Más |
 | `notas` | tuyas, la app no las muestra |
+| `lugares` | dónde entrena el alumno (Hogar, Gimnasio, Parque, Vacaciones). Lo elige en la app, en Más → Dónde entrenás |
 
 **Planes**: una fila por ejercicio, por alumno.
 
@@ -168,6 +169,7 @@ Para pasar el mismo plan a otro alumno: copiá las filas y cambiá el email.
 | `error_comun`, `musculos` (separados por coma), `por_que` | |
 | `patron`, `regresion`, `progresion` | solo cuentan para los ejercicios que **no** están en la Biblioteca |
 | `por_lado` | casilla: marcala en los ejercicios **unilaterales** (por ejemplo, Peso muerto a una pierna). La app muestra "reps por lado" y las repeticiones se registran de cada lado |
+| `lugares` | dónde se puede hacer: Hogar, Gimnasio, Parque o Vacaciones, separados por coma. Se carga desde la ficha en Mapeo. Vacío = aparece en todos los filtros |
 
 **Sesiones** y **Registro** las escribe la app. Podés leerlas, filtrarlas o armar gráficos en otra hoja, pero no cambies los encabezados. Registro guarda cada serie y queda completo, aunque la app solo lee las últimas 16 semanas (`SEMANAS_HISTORIAL` en el proxy).
 

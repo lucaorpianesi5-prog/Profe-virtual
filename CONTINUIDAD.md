@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **22/11/2026**, versión **1.14** (PR #14).
+Última actualización: **22/11/2026**, versión **1.15** (PR #15).
 
 ---
 
@@ -100,7 +100,11 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
 ## 5. El método de Luca, como lo aplica la app
 
 - **Rango de repeticiones:** de 4 a 12 por defecto, ajustable en cada ejercicio.
-- **Meta de cada sesión (sin subir la carga):** el mismo peso y **una repetición más** que la serie más floja de la última vez, hasta el tope del rango. Por ejemplo, 70 kg × 7 → 70 kg × 8. La sesión arranca cargada con esa meta.
+- **Meta de cada sesión (sin subir la carga):** el mismo peso y **una repetición más** que la serie más floja de la última vez, hasta el tope del rango. Por ejemplo, 70 kg × 5 → 70 kg × 6.
+  - **Nunca hay saltos**, aunque la última vez haya quedado por debajo del mínimo del rango.
+  - **Sin ningún registro,** se arranca en el **mínimo** del rango.
+  - **Si se editó la sesión,** manda la carga del plan, pero las reps siguen saliendo del historial.
+  - La sesión arranca cargada con esa meta.
 - **Subir carga:** se sugiere cuando **una** sesión completa el tope en todas las series, firme y **sin pausas** (y con RIR 2 o más, si se anota).
   - La carga sube 2,5 kg, o 1 kg si es menor a 10 kg.
   - Las reps bajan **siempre a la mitad** de las últimas. Si el número es impar, se redondea para abajo: 12 → 6, 9 → 4.
@@ -113,6 +117,12 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
 - **Carga del plan:** si se editó la sesión después del último registro, manda la carga del plan.
 - **Guía al armar:** un ejercicio por patrón por sesión. Después, armado libre.
 - **Unilaterales:** reps por lado (casilla `por_lado`).
+- **Lugares de entrenamiento** (Hogar, Gimnasio, Parque, Vacaciones):
+  - El alumno elige los suyos en la entrevista o en **Más → Dónde entrenás**. Se guardan en la columna `lugares` de Alumnos.
+  - Cada ejercicio indica dónde se puede hacer, en la columna `lugares` de Ejercicios; se carga desde la ficha o al crear el ejercicio.
+  - Mapeo y el buscador de Armar sesión **arrancan filtrados por los lugares del alumno**.
+  - Un ejercicio **sin lugares cargados aparece en todos los filtros**, hasta que se clasifique.
+  - Para algo especial (por ejemplo, un rack en casa), se cambia el filtro a "Todos" y se elige el ejercicio igual.
 
 ## 6. Qué hace hoy la app (resumen)
 
@@ -171,6 +181,7 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 - Ninguno conocido.
 
 ### Resueltos
+- 22/11 · La sesión sugería el tope del rango (por ejemplo, 10 reps después de hacer 5 con 70 kg). Pasaba si se había editado la sesión, si el ejercicio no tenía registro reciente con ese nombre, en ejercicios sin carga, o si la última vez se quedó por debajo del mínimo del rango. Ahora siempre es +1 repetición, sin saltos → **PR #15**.
 - 04/11 · Las reps o los kg cambiaban sin querer. Había dos causas: el − y el + reaccionaban al apenas apoyar el dedo, incluso al deslizar la pantalla; y al marcar una serie se pisaba la siguiente aunque ya estuviera cargada a mano. Ahora el cambio se aplica al soltar el dedo, si no se movió, y una serie cargada a mano no se pisa → **PR #10**.
 - 02/11 · Al guardar una sesión editada, al empezarla aparecían cargas viejas: el historial le ganaba al plan → **PR #4**.
 - 02/11 · Cambiar días obligaba a tener la misma cantidad de días que de sesiones → **PR #3**.
@@ -186,6 +197,9 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 2. **Claude, en paralelo:**
    - **Elegir qué sesión toca cada día.** Posible diseño: en Cambiar días, asignar una sesión a cada día y guardarlo en `dias` como `L:A,X:C,V:B`. La rotación queda como opción.
    - **Ver una sesión hecha.** Tocar un día con ✓ de la semana y abrir el detalle de esa sesión (desde Registro). Más adelante, un historial completo. A definir: si se puede corregir un dato desde ahí.
+
+### Para definir con Luca
+- **"Las progresiones son muy lentas, salvo que haya un RPE mínimo de 3"** (dicho el 22/11). Falta confirmar qué regla aplicar. Hoy la meta es siempre +1 repetición por sesión. Una opción: +1 por defecto y +2 si en todas las series quedaron al menos 3 repeticiones en reserva (RIR 3 o más).
 
 ### Para validar con el uso
 - La regla de carga y la mitad de las reps.
