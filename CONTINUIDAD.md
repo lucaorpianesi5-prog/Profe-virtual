@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **04/11/2026**, versión **1.11** (PR #11).
+Última actualización: **22/11/2026**, versión **1.12** (PR #12).
 
 ---
 
@@ -121,7 +121,7 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - próxima sesión, en rotación A → B → C;
   - la semana, con ✓ en los días entrenados;
   - racha.
-- **Mi plan:**
+- **Programas:**
   - días de la semana y elegir cualquier sesión para empezarla;
   - **Tus sesiones**: armar, editar y borrar (solo para quien puede armar);
   - **Cambiar días**: de 1 a 7.
@@ -139,6 +139,13 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - avisos de progresión y la cadena completa en Regresión/Progresión;
   - técnica y video;
   - cierre de la sesión.
+- **Mapeo** (pestaña entre Programas y Progreso): la Biblioteca como base de datos.
+  - Filtros por patrón y enfoque, buscador y "solo los que ya hice".
+  - Cada ejercicio muestra su nivel en la cadena, "Estás acá", la última vez y la próxima meta.
+  - Al tocar un ejercicio: tu próxima sesión, tu última vez, la cadena completa (se puede saltar de nivel) y la ficha de técnica con el video.
+  - Con **+** se eligen varios ejercicios y, desde la barra de abajo, **Armar sesión (N)** abre el editor con ellos cargados. **A una sesión** los suma a una sesión que ya existe.
+  - **Ejercicio nuevo en la Biblioteca** abre el mismo formulario que en Armar sesión.
+  - Los alumnos que no pueden armar ven Mapeo como consulta, sin los botones de agregar.
 - **Progreso → Ejercicios:**
   - un catálogo de tus ejercicios, agrupado por patrón y con buscador;
   - cada uno muestra la última vez y **la próxima meta**;

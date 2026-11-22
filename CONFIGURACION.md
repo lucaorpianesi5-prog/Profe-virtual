@@ -92,7 +92,7 @@ Subí el cambio (commit y push). En un par de minutos la app publicada ya usa da
 | `email` | el email de la cuenta de Google con la que va a entrar |
 | `nombre` | cómo lo saluda la app |
 | `estado` | `activo` para que entre; cualquier otra cosa (`vencido`, `pausa`) lo deja afuera |
-| `dias` | días de entrenamiento, por ejemplo `L,X,V` (L M X J V S D). Ordena la semana en Mi plan |
+| `dias` | días de entrenamiento, por ejemplo `L,X,V` (L M X J V S D). Ordena la semana en Programas |
 | `registro_esfuerzo` | lo completa la app cuando el alumno elige RIR/RPE |
 | `fecha_alta`, `fecha_pago`, `fecha_vencimiento`, `monto` | para la suscripción. Hoy la app muestra el vencimiento y el monto en Más |
 | `notas` | tuyas, la app no las muestra |
@@ -121,13 +121,13 @@ Los ejercicios seguidos con el mismo `bloque` se hacen por vueltas: una serie de
 - **Vueltas** = las `series` de cada ejercicio (si alguno tiene menos, en las últimas vueltas se saltea).
 - **`descanso_seg` de cada ejercicio** = la pausa antes de pasar al siguiente (por ejemplo 15). Puede ser `0`: pasa directo.
 - **`descanso_seg` del último del circuito** = el descanso al terminar la vuelta (por ejemplo 120).
-- En la sesión, al marcar una serie la app pasa sola al siguiente ejercicio del circuito y muestra "vuelta 2 de 3". En Mi plan, el circuito aparece agrupado.
+- En la sesión, al marcar una serie la app pasa sola al siguiente ejercicio del circuito y muestra "vuelta 2 de 3". En Programas, el circuito aparece agrupado.
 
 Si la columna `bloque` no está en tu hoja Planes, corré `configurar` de nuevo (menú **Profe Virtual → Configurar / reparar hojas**): la agrega al final sin tocar lo demás.
 
 ### Armar sesiones desde la app
 
-En **Mi plan → Tus sesiones** aparecen **Armar sesión** y un botón por cada sesión para editarla. Elegís ejercicios del catálogo (o escribís uno nuevo), series, reps o segundos, descanso, carga inicial y nota, y podés unir ejercicios en circuito. Al guardar:
+En **Programas → Tus sesiones** aparecen **Armar sesión** y un botón por cada sesión para editarla. Elegís ejercicios del catálogo (o escribís uno nuevo), series, reps o segundos, descanso, carga inicial y nota, y podés unir ejercicios en circuito. Al guardar:
 
 - La sesión queda en **Planes**, con las mismas columnas de siempre.
 - Si la sesión ya existía, la versión anterior se copia a la hoja **Planes_archivo**, con la fecha. La app crea esa hoja la primera vez.
