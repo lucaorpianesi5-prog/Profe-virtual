@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **22/11/2026**, versión **1.15** (PR #15).
+Última actualización: **22/11/2026**, versión **1.16** (PR #16).
 
 ---
 
@@ -105,6 +105,14 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - **Sin ningún registro,** se arranca en el **mínimo** del rango.
   - **Si se editó la sesión,** manda la carga del plan, pero las reps siguen saliendo del historial.
   - La sesión arranca cargada con esa meta.
+- **Con margen** (en todas las series quedaron 3 o más repeticiones en reserva y no hubo pausas):
+  - Cuenta como margen **RIR 3 o más**, o **RPE 7 o menos** si se anota RPE. Solo aplica si el alumno registra el esfuerzo (Más → Registro de esfuerzo).
+  - Las series arrancan con **+2 repeticiones**.
+  - El aviso ofrece **subir un escalón de carga** (la mitad de las reps), aclarando que el aumento de peso es progresivo: **un escalón por vez**, aunque con más kilos todavía sobre margen.
+- **Cartel "Cómo subir de carga"** (debajo de las series y en los avisos):
+  - subir de a poco;
+  - para conocer tu máximo antes de entrenarlo: completar una serie con volumen alto de repeticiones y probar la siguiente con la mitad de las reps y un escalón más de carga;
+  - cuándo subir.
 - **Subir carga:** se sugiere cuando **una** sesión completa el tope en todas las series, firme y **sin pausas** (y con RIR 2 o más, si se anota).
   - La carga sube 2,5 kg, o 1 kg si es menor a 10 kg.
   - Las reps bajan **siempre a la mitad** de las últimas. Si el número es impar, se redondea para abajo: 12 → 6, 9 → 4.
@@ -197,9 +205,6 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
 2. **Claude, en paralelo:**
    - **Elegir qué sesión toca cada día.** Posible diseño: en Cambiar días, asignar una sesión a cada día y guardarlo en `dias` como `L:A,X:C,V:B`. La rotación queda como opción.
    - **Ver una sesión hecha.** Tocar un día con ✓ de la semana y abrir el detalle de esa sesión (desde Registro). Más adelante, un historial completo. A definir: si se puede corregir un dato desde ahí.
-
-### Para definir con Luca
-- **"Las progresiones son muy lentas, salvo que haya un RPE mínimo de 3"** (dicho el 22/11). Falta confirmar qué regla aplicar. Hoy la meta es siempre +1 repetición por sesión. Una opción: +1 por defecto y +2 si en todas las series quedaron al menos 3 repeticiones en reserva (RIR 3 o más).
 
 ### Para validar con el uso
 - La regla de carga y la mitad de las reps.

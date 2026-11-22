@@ -519,6 +519,8 @@ button:active{transition:transform .1s}
 #map-c>*{flex-shrink:0}
 :root[data-lay="tabh"] #map-l{display:grid;grid-template-columns:1fr 1fr;gap:.55rem 1rem}
 :root[data-lay="tabh"] #map-l .pk-pat{grid-column:1/-1}
+.link-guia{display:flex;align-items:center;gap:.35rem;align-self:flex-start;min-height:40px;font-size:.76rem;font-weight:700;color:var(--acento)}
+.link-guia .ic{width:15px;height:15px}
 .consejo{display:flex;gap:.6rem;align-items:flex-start;background:var(--card2);border:1px solid var(--borde2);border-radius:14px;padding:.75rem .85rem;font-size:.8rem;line-height:1.5;color:var(--texto2)}
 .consejo>.ic{width:18px;height:18px;flex-shrink:0;margin-top:2px;color:var(--acento)}
 .consejo.atras>.ic{color:var(--amber)}
@@ -930,7 +932,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.15 · 22/11/2026';
+const VERSION_APP='1.16 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1346,7 +1348,7 @@ function ultimaVez(e){
 }
 function lastSets(e){
   if(!REAL)return Array.from({length:e.s},(_,j)=>({kg:e.kg,reps:(j===e.s-1&&e.r[1]>6)?e.r[1]-1:e.r[1]}));
-  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir,pausas:s.pausas,id:s.id})):[];
+  const u=ultimaVez(e); return u?u.sets.map(s=>({kg:s.kg||0,reps:s.reps||0,rir:s.rir,rpe:s.rpe,pausas:s.pausas,id:s.id})):[];
 }
 /* Últimas sesiones de un ejercicio (de la más nueva a la más vieja), cada una con sus series */
 function sesionesDe(n,cuantas){
@@ -1372,6 +1374,9 @@ function consejo(e){
               :`La última vez completaste el tope sin pausas: podés pasar a <b>${prog}</b>.`};
     if(topeP(u[0])&&(max||prog))return {tipo:'pausas',sube:max?sube:null,subeReps:r2,btn:max?['subir','Subir igual a '+fmt(sube)+' kg × '+r2]:['prog','Ver la progresión igual'],
       html:`La última vez llegaste al tope, pero con pausas. Lo más recomendable es ${max?`repetir <b>${fmt(max)} kg</b>`:'quedarte en este nivel'} hasta lograrlo sin pausas. Si igual querés ${max?'subir':'avanzar'}, es tu decisión.`};
+    if(conMargen(u[0].s)&&max)return {tipo:'margen',sube,subeReps:r2,btn:['subir','Subir un escalón: '+fmt(sube)+' kg × '+r2],
+      html:`La última vez te sobró margen: 3 o más repeticiones en reserva en todas las series. Hoy podés <b>sumar 2 repeticiones</b> (ya cargadas) o <b>subir un escalón de carga</b>. El aumento de peso tiene que ser progresivo: un escalón por vez, aunque con más kilos todavía te sobre margen.`,guia:true};
+    if(conMargen(u[0].s)&&!max)return {tipo:'margen',html:`La última vez te sobró margen: hoy podés <b>sumar 2 repeticiones</b> (ya cargadas)${prog?` o pasar a <b>${prog}</b>`:''}.`,btn:prog?['prog','Ver la progresión']:null};
   }
   if(u.length>=2&&u.every(bajo)&&e.reg)return {tipo:'reg',btn:['reg','Ver la regresión'],html:`Las últimas 2 veces no llegaste al mínimo de repeticiones. Está bien volver un tiempo a <b>${esc(e.reg)}</b>: retroceder un paso también es avanzar.`};
   return null;
@@ -1394,6 +1399,8 @@ function tsUltima(e){
 /* Al subir la carga, las repeticiones bajan siempre a la mitad de las últimas, aunque quede debajo del rango:
    12 × 50 kg → 6 × 52,5 kg; 8 → 4; 9 → 4. Después se vuelve a construir hasta el tope. Es la estructura del programa. */
 const repsAlSubir=(e,sets)=>Math.max(1,Math.floor(Math.max(0,...sets.map(s=>s.reps||0))/2));   // impares, para abajo: mejor con margen
+/* Margen: en todas las series quedaron 3 o más repeticiones en reserva (RIR 3+, o RPE 7 o menos si se anotó RPE) y sin pausas */
+const conMargen=sets=>sets.length>0&&sets.every(s=>!(s.pausas>0)&&(s.rir!=null?s.rir>=3:(s.rpe!=null?s.rpe<=7:false)));
 /* Lo que la app propone para hoy: { kg, reps, sube } */
 function sugerencia(e){
   const top=e.r[1];
@@ -1410,10 +1417,12 @@ function sugerencia(e){
     return {kg,reps:kg>max&&max&&base!=null?Math.max(1,Math.floor((ls_.length?Math.max(...ls_.map(s=>s.reps||0)):base)/2)):masUna,sube:false};
   }
   if(!ls_.length)return {kg:max||e.kg||0,reps:masUna,sube:false};
-  if(!max)return {kg:0,reps:masUna,sube:false};
+  /* Con margen (RIR 3+): se permiten 2 repeticiones más, o subir UN escalón de carga (se ofrece en el aviso) */
+  const margen=conMargen(ls_), masDos=base==null?e.r[0]:Math.min(top,Math.max(1,base+2));
+  if(!max)return {kg:0,reps:margen?masDos:masUna,sube:false,margen};
   const tope=ls_.length>=e.s&&ls_.every(s=>serieTope(e,s));
   if(tope)return {kg:+(max+incremento(max)).toFixed(1),reps:repsAlSubir(e,ls_),sube:true};
-  return {kg:max,reps:masUna,sube:false};
+  return {kg:max,reps:margen?masDos:masUna,sube:false,margen};
 }
 const sugerida=e=>sugerencia(e).kg;
 const TXT_SUBIR='Subir la carga y bajar las repeticiones a la mitad para volver a construir hasta el tope es la estructura del programa: funciona y previene lesiones. Es una guía, la decisión es tuya.';
@@ -2015,6 +2024,14 @@ function explicaEsfuerzo(que,volver){
   sheet(`<div class="sheet-col"><div><h3>¿Qué es esto?</h3><p class="sub">Es opcional: si no tocás nada, la serie se guarda igual.</p></div>${que==='rpe'?rpe+rir:rir+rpe}<button class="btn" id="ex-ok">${volver?'Volver':'Entendido'}</button></div>`,()=>{$('#ex-ok').onclick=volver||cerrar});
 }
 document.addEventListener('click',e=>{const i=e.target.closest('[data-info]'); if(i)(i.dataset.info==='pausas'?explicaPausas:explicaEsfuerzo)(i.dataset.info)});
+/* Cartel: cómo subir de carga, de a poco */
+function explicaProgresion(){
+  sheet(`<div class="sheet-col"><div><h3>Cómo subir de carga</h3><p class="sub">Es una guía basada en el programa: funciona y previene lesiones. La decisión siempre es tuya.</p></div>
+   <div class="porque"><div class="porque-tit">De a poco</div><div class="porque-txt">Subí un escalón por vez (2,5 kg, o 1 kg en cargas chicas), <b>aunque con más kilos todavía te sobre margen</b>. El cuerpo se adapta más lento que la fuerza que sentís en el momento.</div></div>
+   <div class="porque"><div class="porque-tit">Conocé tu máximo antes de entrenarlo</div><div class="porque-txt">Completá una serie con <b>volumen alto de repeticiones</b>. En la siguiente probá con <b>la mitad de las repeticiones y un escalón más de carga</b>. Así vas conociendo tu máximo de a poco, sin ir a buscarlo de golpe.</div></div>
+   <div class="porque"><div class="porque-tit">Cuándo subir</div><div class="porque-txt">Cuando completás el tope del rango en todas las series, firme y sin pausas: la próxima sesión, un escalón más de carga y la mitad de las repeticiones. Si te sobran 3 o más repeticiones en reserva, podés sumar 2 repeticiones o subir un escalón.</div></div>
+   <button class="btn" onclick="cerrar()">Entendido</button></div>`);
+}
 /* Pausas dentro de la serie (rest-pause): sirven para completar el volumen, pero para subir hay que lograrlo sin pausas */
 const TXT_METODO='Trabajá en el rango de repeticiones de tu plan (por ejemplo, de 4 a 12). <b>Subí la carga</b> recién cuando completás el tope en todas las series de forma cómoda, firme y <b>sin pausas</b> entre repeticiones, y en ese momento <b>bajá las repeticiones a la mitad</b> para volver a construir.';
 function explicaPausas(){
@@ -2119,6 +2136,7 @@ function metaProxima(e){
   const ls_=lastSets(e); if(!ls_.length)return null;
   const sg=sugerencia(e), kg=sg.kg?fmt(sg.kg)+' kg × ':'', pausas=ls_.some(s=>s.pausas>0), top=e.r[1];
   const txt=sg.sube?`La última vez completaste el tope sin pausas: subís la carga y bajás las repeticiones a la mitad, para volver a construir hasta el tope.`
+    :sg.margen?`Te sobró margen la última vez (3 o más repeticiones en reserva): sumá 2 repeticiones, o subí un escalón de carga. De a poco, un escalón por vez.`
     :pausas&&ls_.every(s=>(s.reps||0)>=top)?`Llegaste al tope, pero con pausas: repetí hasta lograrlo sin pausas.`
     :sg.reps>=top?`Buscá el tope del rango (${top}) en todas las series, firme y sin pausas.`
     :`Sumá una repetición: ${sg.reps} en todas las series, firme y sin pausas. Al llegar a ${top}, subís la carga.`;
@@ -2205,10 +2223,11 @@ function renderSesion(){
    <div class="pane pane-reg">
      <div class="ej-presc"><div class="presc"><div class="presc-lbl">Series × ${e.seg?'seg':'reps'}${e.lado?' por lado':''}</div><div class="presc-val">${e.sets.length} × ${rngE(e)}</div></div><div class="presc"><div class="presc-lbl">${!cs[i]?'Descanso':i<cs[i].z?'Pausa y sigue':'Fin de vuelta'}</div><div class="presc-val">${e.d>0?mmss(e.d):'Sin pausa'}</div></div><div class="presc"><div class="presc-lbl">Carga sugerida</div><div class="presc-val carga">${e.kgSug?fmt(e.kgSug)+' kg':'—'}</div></div></div>
      ${ultimaHTML(e)}
-     ${(c=>c?`<div class="consejo ${c.tipo!=='prog'?'atras':''}">${ico(c.tipo==='reg'?'down':c.tipo==='pausas'?'info':'up')}<div>${c.html}${c.btn?`<button data-a="${c.btn[0]}">${c.btn[1]}</button>`:''}</div></div>`:'')(consejo(e))}
+     ${(c=>c?`<div class="consejo ${c.tipo==='reg'||c.tipo==='pausas'?'atras':''}">${ico(c.tipo==='reg'?'down':c.tipo==='pausas'?'info':'up')}<div>${c.html}${c.btn?`<button data-a="${c.btn[0]}">${c.btn[1]}</button>`:''}${c.tipo==='margen'||c.tipo==='prog'?`<button data-a="guia">Cómo subir de carga</button>`:''}</div></div>`:'')(consejo(e))}
      ${e.notas?`<div class="porque"><div class="porque-tit">Nota de Luca</div><div class="porque-txt">${e.notas}</div></div>`:''}
      <div class="series" data-i="${i}"></div>
      <div class="nota-chica nota-prog"></div>
+     <button class="link-guia" data-a="guia">${ico('info')}Cómo subir de carga sin apurarte</button>
    </div>
    <div class="pane pane-tec" hidden>${tecHTML(e)}${accionesTec(e)}</div>
   </div>`).join('');
@@ -2270,7 +2289,8 @@ $('#pager').addEventListener('click',e=>{
   if(a){
     const act=a.dataset.a;
     if(act==='video'){ verVideo(ex); }
-    else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done){s.kg=c.sube;s.reps=c.subeReps}}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack(fmt(c.sube)+' kg × '+c.subeReps+'. Si aparecen pausas, volvé a la carga anterior'); }
+    else if(act==='guia'){ explicaProgresion(); }
+    else if(act==='subir'){ const c=consejo(ex); if(!c||!c.sube)return; ex.kgSug=c.sube; ex.sets.forEach(s=>{if(!s.done){s.kg=c.sube;s.reps=c.subeReps}}); pintaSeries(i); pg.querySelector('.presc-val.carga').textContent=fmt(c.sube)+' kg'; a.closest('.consejo').remove(); guardaSesLocal(); vibra(10); snack(fmt(c.sube)+' kg × '+c.subeReps+': un escalón. Si aparecen pausas, volvé a la carga anterior'); }
     else if(act==='repetir'){ const ls_=lastSets(ex); if(!ls_.length)return; ex.sets.forEach((s,j)=>{if(!s.done){const l=ls_[Math.min(j,ls_.length-1)];s.kg=l.kg;s.reps=l.reps;s.editada=true}}); pintaSeries(i); guardaSesLocal(); vibra(10); snack('Cargué lo de la última vez'); }
     else{
       let lista;
@@ -2412,10 +2432,11 @@ function terminar(){
   /* Doble progresión: tope del rango en todas las series; "con margen" = RIR 2 o más si se registró RIR */
   const p=ses.ex[0], tope=p.sets.length&&p.sets.every(s=>s.done&&serieTope(p,s));
   const topeP=!tope&&p.sets.length&&p.sets.every(s=>s.done&&serieTope(p,{...s,pausas:0}));
+  const margenP=!tope&&!topeP&&p.sets.length&&p.sets.every(s=>s.done)&&conMargen(p.sets);
   const maxP=Math.max(0,...p.sets.filter(s=>s.done).map(s=>s.kg));
   $('#cierre-rpe').hidden=!hayRpeSesion(); ses.rpeSes=null;
   $('#rpe-ses').innerHTML=[6,7,8,9,10].map(n=>`<button data-v="${n}"><b>${n}</b><small>${RPE_PAL[n]}</small></button>`).join('');
-  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg × ${repsAlSubir(p,p.sets)} reps</b>, la mitad, para volver a construir hasta el tope.</span>`:topeP?`${ico('info')}<span>En <b>${p.n.toLowerCase()}</b> llegaste al tope, pero con pausas. Lo óptimo es repetir la carga hasta lograrlo sin pausas; la próxima vez vas a poder elegir si subís igual.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
+  $('#logro').innerHTML=ses.prs?`${ico('trophy')}<span><b>${ses.prs} marca${ses.prs>1?'s':''} personal${ses.prs>1?'es':''}</b> en esta sesión: ${ses.ex.filter(x=>x.pr).map(x=>x.n.toLowerCase()).join(', ')}.</span>`:tope?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> completaste el tope del rango sin pausas${hayRirSerie()?' y con margen':''}: la próxima sesión te sugerimos <b>${fmt(+(maxP+incremento(maxP)).toFixed(1))} kg × ${repsAlSubir(p,p.sets)} reps</b>, la mitad, para volver a construir hasta el tope.</span>`:margenP?`${ico('trend')}<span>En <b>${p.n.toLowerCase()}</b> te sobró margen: la próxima podés sumar 2 repeticiones o subir un escalón de carga. De a poco, un escalón por vez.</span>`:topeP?`${ico('info')}<span>En <b>${p.n.toLowerCase()}</b> llegaste al tope, pero con pausas. Lo óptimo es repetir la carga hasta lograrlo sin pausas; la próxima vez vas a poder elegir si subís igual.</span>`:`${ico('dumbbell')}<span>Registraste <b>${series} series</b>. Completá el tope de reps en todas, firme y sin pausas, y te sugerimos subir la carga.</span>`;
   vibra([30,60,30,60,80]);
 }
 $('#btn-listo').onclick=()=>{if(REAL&&S.ses)encolar(S.ses,true);renderApp();show('app','f')};
