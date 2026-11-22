@@ -4,7 +4,7 @@
 - **Para cómo usar la planilla** (qué va en cada hoja y columna): [CONFIGURACION.md](CONFIGURACION.md).
 - **Al terminar una sesión:** actualizar este archivo (estado, bugs, ideas, próximos pasos) en el mismo pull request que los cambios.
 
-Última actualización: **22/11/2026**, versión **1.12** (PR #12).
+Última actualización: **22/11/2026**, versión **1.13** (PR #13).
 
 ---
 
@@ -145,6 +145,9 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - Al tocar un ejercicio: tu próxima sesión, tu última vez, la cadena completa (se puede saltar de nivel) y la ficha de técnica con el video.
   - Con **+** se eligen varios ejercicios y, desde la barra de abajo, **Armar sesión (N)** abre el editor con ellos cargados. **A una sesión** los suma a una sesión que ya existe.
   - **Ejercicio nuevo en la Biblioteca** abre el mismo formulario que en Armar sesión.
+  - En el detalle, quien puede armar también puede:
+    - **editar o completar la ficha** (3 claves, error común, músculos, por qué, video y por lado). Se guarda en la hoja Ejercicios;
+    - **mover el ejercicio un nivel** dentro de su cadena ("Hacerlo más simple" o "Hacerlo más exigente"): cambia de lugar con su vecino en la Biblioteca.
   - Los alumnos que no pueden armar ven Mapeo como consulta, sin los botones de agregar.
 - **Progreso → Ejercicios:**
   - un catálogo de tus ejercicios, agrupado por patrón y con buscador;
@@ -152,6 +155,11 @@ App (GitHub Pages) ──POST texto plano──► Proxy Apps Script (corre como
   - al tocarlo: la meta explicada, la última vez serie por serie, la primera vez, la mejor carga, la cantidad de sesiones y el gráfico de carga;
   - en iPad horizontal, la lista y el detalle se ven lado a lado.
 - **Progreso → Constancia:** las últimas 4 semanas y la racha.
+- **Botón "atrás" del celular:**
+  - con una ventana abierta, la cierra;
+  - en la sesión o el editor, hace lo mismo que su botón de volver (que pide confirmación);
+  - en otra pestaña, vuelve a Inicio;
+  - en Inicio, pregunta **"¿Salir de la app?"**: "Quedarme", o tocar atrás de nuevo para salir.
 - **Más:** instalar, registro de esfuerzo, estética, sincronizar, suscripción (vencimiento y monto) y cerrar sesión.
 
 ## 7. Registro de bugs
@@ -203,6 +211,7 @@ Formato: fecha · descripción · estado (abierto / resuelto en PR #).
     2. Si la semana 4 es fija por calendario o se cuenta por sesiones hechas (por ejemplo, después de 9 sesiones con 3 días por semana).
     3. Si el alumno puede saltarla o posponerla.
     4. Si hay diferencia entre "adaptación" (por ejemplo, al empezar o al volver de una pausa) y "descarga" (después de 3 semanas de carga).
+- **Plantillas de sesión:** guardar una selección de ejercicios que se repite (por ejemplo, "Tren inferior fuerza") para armar la sesión con un toque desde Mapeo, con la carga sugerida del día. No entra en la rotación A/B/C. Pendiente de que Luca confirme si la quiere.
 - **Más volumen antes de pasar de nivel** en algunos ejercicios (por ejemplo, de flexiones con rodillas a flexiones completas). Por ahora el rango se ajusta a mano. Falta la solución óptima.
 - **Planes de alumnos desde la app:** el mismo editor, eligiendo el alumno, con opción de duplicar un plan.
 - **Mi suscripción:** vencimiento, aviso antes de vencer y botón de pago (Mercado Pago).

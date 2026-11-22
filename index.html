@@ -930,7 +930,7 @@ const fmt=v=>String(v).replace('.',',');
 /* ───────── Conexión con la planilla de Luca (ver CONFIGURACION.md) ─────────
    Con los dos valores completos la app usa datos reales; vacíos (o con ?demo en la URL) es la demo. */
 /* Versión de la app: se muestra al final de Inicio y de Más (junto con la del proxy). Se actualiza en cada PR. */
-const VERSION_APP='1.12 · 22/11/2026';
+const VERSION_APP='1.13 · 22/11/2026';
 const CONFIG={
   proxy:'https://script.google.com/macros/s/AKfycby8miuWxKfQYjpe_AYbG32ax-iu_T9Post4nY8C0KtsZL3hjchYtgh83SFGpodKLGk5/exec',      // URL de la app web de Apps Script (termina en /exec)
   clientId:'290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleusercontent.com'    // ID de cliente OAuth de Google Cloud (termina en .apps.googleusercontent.com)
@@ -1054,7 +1054,9 @@ function sheet(html,mount){
   $('#scrim').classList.add('on'); s.style.setProperty('--dy','0px'); s.classList.add('on');
   mount&&mount(); vibra(8);
 }
-function cerrar(){ $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); }
+let dialogoSalir=false;   // ventana "¿Salir de la app?" abierta (ver el manejo del botón atrás, al final)
+const trampaAtras=()=>{try{history.pushState({pv:1},'')}catch(e){}};
+function cerrar(){ $('#scrim').classList.remove('on'); $('#sheet').classList.remove('on'); if(dialogoSalir){dialogoSalir=false;trampaAtras()} }
 $('#scrim').onclick=cerrar;
 (function(){
   const s=$('#sheet'),g=$('#grab'); let y0=null,dy=0;
@@ -1779,14 +1781,54 @@ function verMapeo(n){
    ${m?`<div class="pe-meta"><div class="card-label">Tu próxima sesión</div><div class="pe-big">${m.largo}</div><p>${m.txt}</p></div>`:''}
    ${ls_.length?`<div><div class="card-label">Tu última vez · ${lastFecha(e)}</div><div class="pe-series">${ls_.map((s,j)=>`<div><span>Serie ${j+1}</span><b>${kgr(s.kg,s.reps)}${s.pausas>0?` · ${s.pausas} pausa${s.pausas>1?'s':''}`:''}</b></div>`).join('')}</div></div>`
      :p&&p.uf?`<div><div class="card-label">Tu última vez · ${ddmm(p.uf)}</div><div class="pe-series"><div><span>Mejor serie</span><b>${kgr(p.uk,p.ur)}</b></div></div></div>`:REAL?'<p class="nota-chica">Todavía no lo hiciste.</p>':''}
-   ${cad?`<div><div class="card-label" style="margin-bottom:.45rem">Cadena · de lo más simple a lo más exigente</div><div class="lista-mas">${cad.ej.map((x,k)=>`<button class="sust-op cad-op ${x===n?'aca':''}" data-ir="${esc(x)}"><span><b class="num">${k+1}</b>${esc(x)}</span><small>${x===aca?'estás acá':x===n?'viendo':''}</small></button>`).join('')}</div></div>`:''}
+   ${cad?`<div><div class="card-label" style="margin-bottom:.45rem">Cadena · de lo más simple a lo más exigente</div><div class="lista-mas">${cad.ej.map((x,k)=>`<button class="sust-op cad-op ${x===n?'aca':''}" data-ir="${esc(x)}"><span><b class="num">${k+1}</b>${esc(x)}</span><small>${x===aca?'estás acá':x===n?'viendo':''}</small></button>`).join('')}</div>
+     ${puedeArmar()&&cad.ej.length>1?`<div class="ej-acciones" style="margin-top:.5rem"><button id="mv-up" ${cad.ej[0]===n?'disabled':''}>${ico('up')}Hacerlo más simple</button><button id="mv-down" ${cad.ej[cad.ej.length-1]===n?'disabled':''}>${ico('down')}Hacerlo más exigente</button></div>`:''}</div>`:''}
    ${ficha?tecHTML({...c,n,notas:'',por:c.por||''}):'<p class="nota-chica">Todavía no tiene ficha de técnica: se completa en la hoja Ejercicios.</p>'}
-   ${c.video||!REAL?`<div class="ej-acciones"><button class="video" id="mv-video">${ico('play')}Video</button></div>`:''}
+   ${c.video||!REAL||puedeArmar()?`<div class="ej-acciones">${c.video||!REAL?`<button class="video" id="mv-video">${ico('play')}Video</button>`:''}${puedeArmar()?`<button id="mv-ficha">${ico('edit')}${ficha&&c.como&&c.como.length?'Editar ficha':'Completar ficha'}</button>`:''}</div>`:''}
    ${puedeArmar()?`<div class="foot-row"><button class="btn sec chico" id="mv-sel">${sel?'Quitar de la selección':'Agregar a la selección'}</button><button class="btn chico" id="mv-armar">Armar sesión con este</button></div>`:''}</div>`,()=>{
     $$('#sheet-c [data-ir]').forEach(b=>b.onclick=()=>{if(b.dataset.ir!==n)verMapeo(b.dataset.ir)});
     if($('#mv-video'))$('#mv-video').onclick=()=>verVideo({...c,n});
     if($('#mv-sel'))$('#mv-sel').onclick=()=>{selMapeo(n);cerrar();renderMapeo()};
     if($('#mv-armar'))$('#mv-armar').onclick=()=>{cerrar();armarCon([n],null)};
+    if($('#mv-ficha'))$('#mv-ficha').onclick=()=>editarFicha(n);
+    ['up','down'].forEach(k=>{const b=$('#mv-'+k); if(b)b.onclick=()=>moverNivel(n,k==='up'?-1:1,b)});
+  });
+}
+/* Mueve el ejercicio un nivel en su cadena (cambia de lugar con el vecino) */
+async function moverNivel(n,dir,btn){
+  if(REAL){
+    btn.disabled=true; btn.textContent='Moviendo…';
+    try{ aplicarDatos(await api('moverEnCadena',{n,dir})) }catch(e){ btn.disabled=false; return snack(e.code?mensajeError(e):'Sin conexión: no se movió. Probá de nuevo cuando tengas señal.') }
+  } else {
+    const c=S.cadenas&&S.cadenas[(S.cat[n]||{}).cad]; if(!c)return; const k=c.ej.indexOf(n), o=k+dir; if(o<0||o>=c.ej.length)return;
+    [c.ej[k],c.ej[o]]=[c.ej[o],c.ej[k]]; const ci=S.cadenas.indexOf(c);
+    c.ej.forEach((x,j)=>{S.cat[x]={...(S.cat[x]||{n:x}),cad:ci,niv:j+1,reg:c.ej[j-1]||'',prog:c.ej[j+1]||''}});
+  }
+  vibra(10); snack(dir<0?n+' ahora es más simple en su cadena':n+' ahora es más exigente en su cadena'); verMapeo(n); if(S.tab==='mapeo')renderMapeo();
+}
+/* Ficha de técnica: claves, error común, músculos, por qué, video y por lado (hoja Ejercicios) */
+function editarFicha(n){
+  const c=enCatalogo(n)||S.cat[n]||{n}, como=c.como||[];
+  sheet(`<div class="sheet-col"><div><h3>Ficha de ${esc(n)}</h3><p class="sub">Lo que ve el alumno en Técnica. Queda en la hoja Ejercicios.</p></div>
+    ${[0,1,2].map(k=>`<label class="campo"><span>Clave ${k+1}${k===0?' · posición inicial':k===1?' · movimiento':' · final'}</span><input class="cin" id="fi-c${k}" maxlength="200" value="${esc(como[k]||'')}"></label>`).join('')}
+    <label class="campo"><span>Error común</span><input class="cin" id="fi-err" maxlength="200" value="${esc(c.err||'')}"></label>
+    <label class="campo"><span>Músculos (separados por coma)</span><input class="cin" id="fi-mus" maxlength="200" value="${esc((c.mus||[]).join(', '))}"></label>
+    <label class="campo"><span>Por qué (para qué sirve)</span><input class="cin" id="fi-por" maxlength="200" value="${esc(c.por||'')}"></label>
+    <label class="campo"><span>Video (link de YouTube no listado)</span><input class="cin" id="fi-vid" inputmode="url" maxlength="200" placeholder="https://…" value="${esc(c.video||'')}"></label>
+    <button class="ar-lado ${c.lado?'on':''}" id="fi-lado" aria-pressed="${!!c.lado}"><i>${ico('check')}</i>Por lado (unilateral)</button>
+    <button class="btn" id="fi-ok">Guardar ficha</button><button class="btn sec chico" id="fi-no">Cancelar</button></div>`,()=>{
+    let lado=!!c.lado;
+    $('#fi-lado').onclick=()=>{lado=!lado;$('#fi-lado').classList.toggle('on',lado);$('#fi-lado').setAttribute('aria-pressed',lado)};
+    $('#fi-no').onclick=()=>verMapeo(n);
+    $('#fi-ok').onclick=async()=>{
+      const q={n,como:[0,1,2].map(k=>$('#fi-c'+k).value.trim()).filter(Boolean),err:$('#fi-err').value.trim(),mus:$('#fi-mus').value.split(',').map(x=>x.trim()).filter(Boolean).join(', '),por:$('#fi-por').value.trim(),video:$('#fi-vid').value.trim(),lado};
+      if(q.video&&!/^https?:\/\//i.test(q.video)){snack('El video tiene que ser un link que empiece con http');return}
+      const ok=$('#fi-ok'); ok.disabled=true; ok.textContent='Guardando…';
+      if(REAL){
+        try{ aplicarDatos(await api('editarFicha',q)) }catch(e){ ok.disabled=false; ok.textContent='Guardar ficha'; return snack(e.code?mensajeError(e):'Sin conexión: no se guardó. Probá de nuevo cuando tengas señal.') }
+      } else S.cat[n]={...(S.cat[n]||{n}),como:q.como,err:q.err,mus:q.mus?q.mus.split(', '):[],por:q.por,video:q.video,lado};
+      vibra(10); snack('Ficha guardada'); verMapeo(n);
+    };
   });
 }
 
@@ -2507,6 +2549,21 @@ function arrancarReal(){
   else prepararLogin();
 }
 
+/* Botón "atrás" del celular: nunca cierra la app de golpe.
+   Con una ventana abierta la cierra; en la sesión o el editor hace lo mismo que su botón de volver;
+   en otra pestaña vuelve a Inicio; en Inicio pregunta si querés salir. */
+trampaAtras();
+addEventListener('popstate',()=>{
+  const on=id=>$('#'+id).classList.contains('on');
+  if($('#sheet').classList.contains('on')){cerrar();trampaAtras();return}
+  if(on('armar')){$('#ar-back').click();trampaAtras();return}
+  if(on('sesion')){$('#ses-salir').click();trampaAtras();return}
+  if(on('cierre')){$('#btn-listo').click();trampaAtras();return}
+  if(on('app')&&S.tab!=='inicio'){setTab('inicio');trampaAtras();return}
+  /* En Inicio: se pregunta y la trampa NO se repone, así el próximo "atrás" sí sale de la app */
+  dialogoSalir=true;
+  sheet(`<div class="sheet-col"><div><h3>¿Salir de la app?</h3><p class="sub">Tocá atrás de nuevo para salir. Tus datos quedan guardados.</p></div><button class="btn" id="sl-no">Quedarme</button></div>`,()=>{$('#sl-no').onclick=cerrar});
+});
 if(REAL)arrancarReal(); else renderApp();
 </script>
 </body>
