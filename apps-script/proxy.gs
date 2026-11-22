@@ -11,10 +11,13 @@ const CLIENT_ID = '290132927246-beo9h34ie995ikholsirpa1l8sg03prs.apps.googleuser
 // Días que dura la sesión en el dispositivo antes de volver a pedir "Entrar con Google".
 const DIAS_TOKEN = 60;
 // Versión del proxy: la app la muestra al final de Inicio y de Más, para saber si la última versión está publicada.
-const VERSION_PROXY = '1.15 · 22/11/2026';
+const VERSION_PROXY = '1.17 · 22/11/2026';
 // Quién puede armar su plan desde la app ("Armar sesión" en Mi plan). El dueño de la planilla siempre puede;
 // para habilitar a otra cuenta, agregá su email acá, por ejemplo ['alguien@gmail.com'].
 const PUEDEN_ARMAR = [];
+// Quién puede modificar la Biblioteca compartida (ejercicios nuevos, fichas y niveles). El dueño siempre puede;
+// armar su propio plan (PUEDEN_ARMAR) NO da este permiso.
+const EDITAN_BIBLIOTECA = [];
 // Patrones de movimiento de la Biblioteca (lista desplegable en la columna "patron"; la app los muestra en este orden).
 const PATRONES = ['Bisagra de Cadera', 'Bisagra de Rodilla', 'Core', 'Tracción', 'Empuje', 'Tren superior', 'Tren inferior', 'Full body'];
 // Lugares de entrenamiento: el alumno elige los suyos y cada ejercicio indica dónde se puede hacer (columna "lugares").
@@ -332,12 +335,12 @@ function atender(q) {
   if (q.accion === 'guardarSesion') return Object.assign({ ok: true }, guardarSesion(email, q.sesion, q.series));
   if (q.accion === 'preferencias') return Object.assign({ ok: true }, guardarPreferencias(alumno, q));
   if (q.accion === 'editarFicha' || q.accion === 'moverEnCadena') {
-    if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede editar la Biblioteca');
+    if (!editaBiblioteca(email)) throw falla('permiso', 'Tu cuenta no puede editar la Biblioteca');
     if (q.accion === 'editarFicha') editarFicha(q); else moverEnCadena(q);
     return Object.assign({ ok: true }, datosDe(alumno));
   }
   if (q.accion === 'agregarABiblioteca') {
-    if (!puedeArmar(email)) throw falla('permiso', 'Tu cuenta no puede cargar ejercicios');
+    if (!editaBiblioteca(email)) throw falla('permiso', 'Tu cuenta no puede cargar ejercicios en la Biblioteca');
     agregarABiblioteca(q);
     return Object.assign({ ok: true }, datosDe(alumno));
   }
@@ -390,6 +393,12 @@ function leerToken(token) {
   return d.e;
 }
 
+function esDueno(email) {
+  let dueno = '';
+  try { dueno = norm(Session.getEffectiveUser().getEmail()); } catch (e) {}
+  return !!dueno && email === dueno;
+}
+function editaBiblioteca(email) { return esDueno(email) || EDITAN_BIBLIOTECA.map(norm).indexOf(email) >= 0; }
 function puedeArmar(email) {
   let dueno = '';
   try { dueno = norm(Session.getEffectiveUser().getEmail()); } catch (e) {}
@@ -476,7 +485,7 @@ function datosDe(a) {
 
   return {
     alumno: {
-      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email), lugares: lugaresDe(a.lugares),
+      email: email, nombre: txt(a.nombre), dias: txt(a.dias), esfuerzo: norm(a.registro_esfuerzo), armar: puedeArmar(email), biblioteca: editaBiblioteca(email), lugares: lugaresDe(a.lugares),
       vencimiento: fecha(a.fecha_vencimiento), monto: num(a.monto)
     },
     plan: plan, catalogo: Object.keys(cat).map(k => cat[k]), cadenas: cc.cadenas, patrones: PATRONES, enfoques: ENFOQUES, lugares: LUGARES, version: VERSION_PROXY, sesiones: ses, historial: historial,
